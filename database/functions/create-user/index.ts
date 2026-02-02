@@ -79,17 +79,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Check if email already exists before attempting to create
-    const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers();
-    const emailExists = existingUsers?.users?.some(u => u.email?.toLowerCase() === email.toLowerCase());
-    
-    if (emailExists) {
-      return new Response(
-        JSON.stringify({ error: 'A user with this email address already exists' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
     // Create user in auth.users
     const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
       email,
@@ -116,7 +105,8 @@ Deno.serve(async (req) => {
     // Update profile with additional details
     const { error: profileError } = await supabaseAdmin
       .from('profiles')
-      .update({
+      .upsert({
+        user_id: newUser.user.id,
         first_name,
         last_name,
         phone,
@@ -126,12 +116,15 @@ Deno.serve(async (req) => {
         joining_date: joining_date || new Date().toISOString().split('T')[0],
         employee_id,
         reporting_manager,
-      })
-      .eq('user_id', newUser.user.id);
+      });
 
     if (profileError) {
-      console.error('Error updating profile:', profileError);
+      return new Response(
+        JSON.stringify({ error: 'Failed to create profile' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
+
 
     // Assign role
     const { error: roleError } = await supabaseAdmin
