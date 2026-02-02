@@ -1,83 +1,85 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': 'https://hrdesk.htge.org', // frontend origin
-  'Access-Control-Allow-Headers': 'Authorization, X-Client-Info, Apikey, Content-Type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Credentials': 'true', // allow auth headers/cookies
-};
+// Allowed frontend origins
+const FRONTEND_URLS = ["https://hrdesk.htge.org"];
 
 Deno.serve(async (req) => {
-  // Handle CORS preflight
-  if (req.method === 'OPTIONS') {
+  // Dynamic CORS handling
+  const origin = req.headers.get("Origin") || "";
+  const allowOrigin = FRONTEND_URLS.includes(origin) ? origin : FRONTEND_URLS[0];
+
+  const corsHeaders = {
+    "Access-Control-Allow-Origin": allowOrigin,
+    "Access-Control-Allow-Headers": "Authorization, X-Client-Info, Apikey, Content-Type",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Credentials": "true",
+  };
+
+  // Handle preflight requests
+  if (req.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: corsHeaders });
   }
 
   try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
     // Admin client with service role
     const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
+      auth: { autoRefreshToken: false, persistSession: false },
     });
 
-    // Get authorization header from request
-    const authHeader = req.headers.get('Authorization');
+    // Authorization header check
+    const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
       return new Response(
-        JSON.stringify({ error: 'No authorization header' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: "No authorization header" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Regular client to check caller role
-    const supabase = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY')!, {
+    // Regular client to get caller info
+    const supabase = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
       global: { headers: { Authorization: authHeader } },
     });
 
-    // Get the calling user
     const { data: { user: callingUser }, error: authError } = await supabase.auth.getUser();
     if (authError || !callingUser) {
       return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: "Unauthorized" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Check if caller is admin or HR
+    // Check caller role
     const { data: callerRole } = await supabaseAdmin
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', callingUser.id)
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", callingUser.id)
       .single();
 
-    if (!callerRole || (callerRole.role !== 'admin' && callerRole.role !== 'hr')) {
+    if (!callerRole || (callerRole.role !== "admin" && callerRole.role !== "hr")) {
       return new Response(
-        JSON.stringify({ error: 'Only admin and HR can create users' }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: "Only admin and HR can create users" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Parse request body
     const { email, password, first_name, last_name, role, department_id, designation_id, phone, date_of_birth, joining_date, employee_id, reporting_manager } = await req.json();
 
     // Validate required fields
-    if (!email || !password || !first_name || !last_name || !role) {
+    if (!email || !first_name || !last_name || !role || (!password && callerRole.role === "admin")) {
       return new Response(
-        JSON.stringify({ error: 'Missing required fields' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: "Missing required fields" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // HR can only create employees
-    if (callerRole.role === 'hr' && role !== 'employee') {
+    // HR restriction: can only create employees
+    if (callerRole.role === "hr" && role !== "employee") {
       return new Response(
-        JSON.stringify({ error: 'HR can only create employee accounts' }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: "HR can only create employee accounts" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -90,20 +92,20 @@ Deno.serve(async (req) => {
     });
 
     if (createError) {
-      console.error('Error creating user:', createError);
-      const errorMessage = createError.message.includes('email')
-        ? 'A user with this email address already exists'
+      console.error("Error creating user:", createError);
+      const errorMessage = createError.message.includes("email")
+        ? "A user with this email address already exists"
         : createError.message;
 
       return new Response(
         JSON.stringify({ error: errorMessage }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Update profile with additional details
+    // Update profile with details
     const { error: profileError } = await supabaseAdmin
-      .from('profiles')
+      .from("profiles")
       .upsert({
         user_id: newUser.user.id,
         first_name,
@@ -112,104 +114,68 @@ Deno.serve(async (req) => {
         date_of_birth,
         department_id,
         designation_id,
-        joining_date: joining_date || new Date().toISOString().split('T')[0],
+        joining_date: joining_date || new Date().toISOString().split("T")[0],
         employee_id,
         reporting_manager,
       });
 
     if (profileError) {
       return new Response(
-        JSON.stringify({ error: 'Failed to create profile' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: "Failed to create profile" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
-    // Assign role to user
+
+    // Assign role
     const { error: roleError } = await supabaseAdmin
-      .from('user_roles')
-      .insert({
-        user_id: newUser.user.id,
-        role: role,
-      });
+      .from("user_roles")
+      .insert({ user_id: newUser.user.id, role });
 
     if (roleError) {
-      console.error('Error assigning role:', roleError);
+      console.error("Error assigning role:", roleError);
       return new Response(
-        JSON.stringify({ error: 'Failed to assign role' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: "Failed to assign role" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Initialize leave balances for the new user
-    const { data: leaveTypes, error: leaveTypesError } = await supabaseAdmin
-      .from('leave_types')
-      .select('id, default_days');
-
-    if (leaveTypesError) {
-      console.error('Error fetching leave types:', leaveTypesError);
-      return new Response(
-        JSON.stringify({ error: 'Failed to fetch leave types' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    // Initialize leave balances
+    const { data: leaveTypes } = await supabaseAdmin
+      .from("leave_types")
+      .select("id, default_days");
 
     if (leaveTypes && leaveTypes.length > 0) {
-      const { data: profileData, error: profileDataError } = await supabaseAdmin
-        .from('profiles')
-        .select('id')
-        .eq('user_id', newUser.user.id)
+      const { data: profile } = await supabaseAdmin
+        .from("profiles")
+        .select("id")
+        .eq("user_id", newUser.user.id)
         .single();
 
-      if (profileDataError || !profileData) {
-        console.error('Error fetching profile for leave balances:', profileDataError);
-        return new Response(
-          JSON.stringify({ error: 'Failed to fetch profile for leave balances' }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
+      if (profile) {
+        const leaveBalances = leaveTypes.map(lt => ({
+          profile_id: profile.id,
+          leave_type_id: lt.id,
+          total_days: lt.default_days,
+          used_days: 0,
+          year: new Date().getFullYear(),
+        }));
 
-      const leaveBalances = leaveTypes.map(lt => ({
-        profile_id: profileData.id,
-        leave_type_id: lt.id,
-        total_days: lt.default_days,
-        used_days: 0,
-        year: new Date().getFullYear(),
-      }));
-
-      const { error: leaveInsertError } = await supabaseAdmin
-        .from('leave_balances')
-        .insert(leaveBalances);
-
-      if (leaveInsertError) {
-        console.error('Error inserting leave balances:', leaveInsertError);
-        return new Response(
-          JSON.stringify({ error: 'Failed to initialize leave balances' }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
+        await supabaseAdmin.from("leave_balances").insert(leaveBalances);
       }
     }
 
-    console.log('User created successfully:', newUser.user.email);
+    console.log("User created successfully:", newUser.user.email);
 
-    // Success response
     return new Response(
-      JSON.stringify({
-        success: true,
-        user: {
-          id: newUser.user.id,
-          email: newUser.user.email,
-          first_name: newUser.user.user_metadata.first_name,
-          last_name: newUser.user.user_metadata.last_name,
-          role: role,
-        },
-      }),
-      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({ success: true, user: { id: newUser.user.id, email: newUser.user.email } }),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
 
   } catch (error) {
-    console.error('Internal server error:', error);
+    console.error("Error:", error);
     return new Response(
-      JSON.stringify({ error: 'Internal server error' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({ error: "Internal server error" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 });
