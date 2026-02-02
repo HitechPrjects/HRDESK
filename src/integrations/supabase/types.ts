@@ -1067,6 +1067,11 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      decrypt_sensitive_data: {
+        Args: { encrypted_data: string }
+        Returns: string
+      }
+      encrypt_sensitive_data: { Args: { data: string }; Returns: string }
       get_profile_id_for_user: { Args: { _user_id: string }; Returns: string }
       has_access_to_goalsheet: {
         Args: { _goalsheet_id: string }
@@ -1087,6 +1092,10 @@ export type Database = {
       is_admin_or_hr: { Args: never; Returns: boolean }
       is_hr: { Args: never; Returns: boolean }
       is_own_profile: { Args: { _profile_id: string }; Returns: boolean }
+      mask_sensitive_value: {
+        Args: { value: string; visible_chars?: number }
+        Returns: string
+      }
     }
     Enums: {
       app_role: "admin" | "hr" | "employee"
