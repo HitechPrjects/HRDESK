@@ -1,33 +1,31 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': 'https://hrdesk.htge.org', // your frontend origin
-  'Access-Control-Allow-Headers': 'Authorization, X-Client-Info, Apikey, Content-Type', // headers your frontend sends
-  'Access-Control-Allow-Methods': 'POST, OPTIONS', // allowed methods
-  'Access-Control-Allow-Credentials': 'true', // allow cookies or auth headers
+  'Access-Control-Allow-Origin': 'https://hrdesk.htge.org', // frontend origin
+  'Access-Control-Allow-Headers': 'Authorization, X-Client-Info, Apikey, Content-Type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Credentials': 'true', // allow auth headers/cookies
 };
-
 
 Deno.serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
-  return new Response(null, { status: 200, headers: corsHeaders });
-}
-
+    return new Response(null, { status: 204, headers: corsHeaders });
+  }
 
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    
-    // Create admin client with service role
+
+    // Admin client with service role
     const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
       auth: {
         autoRefreshToken: false,
-        persistSession: false
-      }
+        persistSession: false,
+      },
     });
 
-    // Get authorization header to verify caller
+    // Get authorization header from request
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       return new Response(
@@ -36,9 +34,9 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Create regular client to check caller's role
+    // Regular client to check caller role
     const supabase = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY')!, {
-      global: { headers: { Authorization: authHeader } }
+      global: { headers: { Authorization: authHeader } },
     });
 
     // Get the calling user
@@ -50,7 +48,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Check if calling user is admin or HR
+    // Check if caller is admin or HR
     const { data: callerRole } = await supabaseAdmin
       .from('user_roles')
       .select('role')
@@ -64,6 +62,7 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Parse request body
     const { email, password, first_name, last_name, role, department_id, designation_id, phone, date_of_birth, joining_date, employee_id, reporting_manager } = await req.json();
 
     // Validate required fields
@@ -74,7 +73,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    // HR can only create employees, not other HRs
+    // HR can only create employees
     if (callerRole.role === 'hr' && role !== 'employee') {
       return new Response(
         JSON.stringify({ error: 'HR can only create employee accounts' }),
@@ -82,23 +81,20 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Create user in auth.users
+    // Create user in auth
     const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
       email,
       password,
       email_confirm: true,
-      user_metadata: {
-        first_name,
-        last_name
-      }
+      user_metadata: { first_name, last_name },
     });
 
     if (createError) {
       console.error('Error creating user:', createError);
-      // Return the specific error message from Supabase
-      const errorMessage = createError.message.includes('email') 
+      const errorMessage = createError.message.includes('email')
         ? 'A user with this email address already exists'
         : createError.message;
+
       return new Response(
         JSON.stringify({ error: errorMessage }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -127,14 +123,12 @@ Deno.serve(async (req) => {
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
-
-
-    // Assign role
+    // Assign role to user
     const { error: roleError } = await supabaseAdmin
       .from('user_roles')
       .insert({
         user_id: newUser.user.id,
-        role: role
+        role: role,
       });
 
     if (roleError) {
@@ -146,45 +140,73 @@ Deno.serve(async (req) => {
     }
 
     // Initialize leave balances for the new user
-    const { data: leaveTypes } = await supabaseAdmin
+    const { data: leaveTypes, error: leaveTypesError } = await supabaseAdmin
       .from('leave_types')
       .select('id, default_days');
 
+    if (leaveTypesError) {
+      console.error('Error fetching leave types:', leaveTypesError);
+      return new Response(
+        JSON.stringify({ error: 'Failed to fetch leave types' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     if (leaveTypes && leaveTypes.length > 0) {
-      const { data: profile } = await supabaseAdmin
+      const { data: profileData, error: profileDataError } = await supabaseAdmin
         .from('profiles')
         .select('id')
         .eq('user_id', newUser.user.id)
         .single();
 
-      if (profile) {
-        const leaveBalances = leaveTypes.map(lt => ({
-          profile_id: profile.id,
-          leave_type_id: lt.id,
-          total_days: lt.default_days,
-          used_days: 0,
-          year: new Date().getFullYear()
-        }));
+      if (profileDataError || !profileData) {
+        console.error('Error fetching profile for leave balances:', profileDataError);
+        return new Response(
+          JSON.stringify({ error: 'Failed to fetch profile for leave balances' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
 
-        await supabaseAdmin.from('leave_balances').insert(leaveBalances);
+      const leaveBalances = leaveTypes.map(lt => ({
+        profile_id: profileData.id,
+        leave_type_id: lt.id,
+        total_days: lt.default_days,
+        used_days: 0,
+        year: new Date().getFullYear(),
+      }));
+
+      const { error: leaveInsertError } = await supabaseAdmin
+        .from('leave_balances')
+        .insert(leaveBalances);
+
+      if (leaveInsertError) {
+        console.error('Error inserting leave balances:', leaveInsertError);
+        return new Response(
+          JSON.stringify({ error: 'Failed to initialize leave balances' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
       }
     }
 
     console.log('User created successfully:', newUser.user.email);
 
+    // Success response
     return new Response(
-      JSON.stringify({ 
-        success: true, 
-        user: { 
-          id: newUser.user.id, 
-          email: newUser.user.email 
-        } 
+      JSON.stringify({
+        success: true,
+        user: {
+          id: newUser.user.id,
+          email: newUser.user.email,
+          first_name: newUser.user.user_metadata.first_name,
+          last_name: newUser.user.user_metadata.last_name,
+          role: role,
+        },
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
   } catch (error) {
-    console.error('Error:', error);
+    console.error('Internal server error:', error);
     return new Response(
       JSON.stringify({ error: 'Internal server error' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
