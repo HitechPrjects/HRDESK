@@ -16,6 +16,28 @@ import { Plus, Pencil, Trash2, UserX, Search, Eye, EyeOff } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useAuth } from '@/contexts/AuthContext';
 
+function getBackendErrorMessage(error: any): string {
+  const contextBody = error?.context?.body;
+
+  if (typeof contextBody === 'string') {
+    try {
+      const parsed = JSON.parse(contextBody);
+      if (parsed?.error) return String(parsed.error);
+      if (parsed?.message) return String(parsed.message);
+    } catch {
+      // ignore parse errors
+    }
+  }
+
+  if (contextBody && typeof contextBody === 'object') {
+    if (contextBody.error) return String(contextBody.error);
+    if (contextBody.message) return String(contextBody.message);
+  }
+
+  if (error?.message) return String(error.message);
+  return 'Request failed';
+}
+
 const employeeSchema = z.object({
   email: z.string().email('Invalid email'),
   password: z.string().min(6, 'Password must be at least 6 characters').optional(),
@@ -66,9 +88,27 @@ export default function AdminEmployees({ hideAdmin = false }: AdminEmployeesProp
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
   const [showPassword, setShowPassword] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const { toast } = useToast();
 
   const isHR = authUser?.role === 'hr';
+
+  // Generate next employee ID in format "HTE-XXX"
+  const generateNextEmployeeId = (): string => {
+    const prefix = 'HTE';
+    const existingIds = employees
+      .map(e => e.employee_id)
+      .filter((id): id is string => !!id && id.startsWith(prefix + '-'))
+      .map(id => {
+        const numPart = id.split('-')[1];
+        return parseInt(numPart, 10);
+      })
+      .filter(n => !isNaN(n));
+    
+    const maxNum = existingIds.length > 0 ? Math.max(...existingIds) : 0;
+    const nextNum = maxNum + 1;
+    return `${prefix}-${String(nextNum).padStart(3, '0')}`;
+  };
 
   const form = useForm<EmployeeForm>({
     resolver: zodResolver(employeeSchema),
@@ -138,6 +178,7 @@ export default function AdminEmployees({ hideAdmin = false }: AdminEmployeesProp
   };
 
   const onSubmit = async (data: EmployeeForm) => {
+    setSubmitting(true);
     try {
       if (editingEmployee) {
         // Update existing employee
@@ -156,7 +197,16 @@ export default function AdminEmployees({ hideAdmin = false }: AdminEmployeesProp
           })
           .eq('id', editingEmployee.id);
 
-        if (error) throw error;
+        if (error) {
+          console.error('Update error:', error);
+          toast({
+            title: 'Error',
+            description: error.message || 'Failed to update employee',
+            variant: 'destructive',
+          });
+          setSubmitting(false);
+          return;
+        }
 
         toast({
           title: 'Success',
@@ -170,6 +220,7 @@ export default function AdminEmployees({ hideAdmin = false }: AdminEmployeesProp
             description: 'Password is required for new employees',
             variant: 'destructive',
           });
+          setSubmitting(false);
           return;
         }
 
@@ -190,8 +241,31 @@ export default function AdminEmployees({ hideAdmin = false }: AdminEmployeesProp
           },
         });
 
-        if (error) throw error;
-        if (result.error) throw new Error(result.error);
+        // IMPORTANT: don't throw here (prevents blank-screen/unhandled rejection);
+        // surface the backend error clearly in the form + toast.
+        if (error) {
+          const message = getBackendErrorMessage(error);
+          form.setError('email', { type: 'manual', message });
+          toast({
+            title: 'Error',
+            description: message,
+            variant: 'destructive',
+          });
+          setSubmitting(false);
+          return;
+        }
+
+        if ((result as any)?.error) {
+          const message = String((result as any).error);
+          form.setError('email', { type: 'manual', message });
+          toast({
+            title: 'Error',
+            description: message,
+            variant: 'destructive',
+          });
+          setSubmitting(false);
+          return;
+        }
 
         toast({
           title: 'Success',
@@ -206,9 +280,11 @@ export default function AdminEmployees({ hideAdmin = false }: AdminEmployeesProp
     } catch (error: any) {
       toast({
         title: 'Error',
-        description: error.message || 'Failed to save employee',
+        description: getBackendErrorMessage(error) || 'Failed to save employee',
         variant: 'destructive',
       });
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -325,7 +401,24 @@ export default function AdminEmployees({ hideAdmin = false }: AdminEmployeesProp
 
         <Dialog open={dialogOpen} onOpenChange={handleDialogClose}>
           <DialogTrigger asChild>
-            <Button onClick={() => setEditingEmployee(null)}>
+            <Button onClick={() => {
+              setEditingEmployee(null);
+              // Auto-generate employee ID for new employees
+              form.reset({
+                email: '',
+                password: '',
+                first_name: '',
+                last_name: '',
+                phone: '',
+                role: 'employee',
+                department_id: '',
+                designation_id: '',
+                date_of_birth: '',
+                joining_date: '',
+                employee_id: generateNextEmployeeId(),
+                reporting_manager: '',
+              });
+            }}>
               <Plus className="mr-2 h-4 w-4" />
               Add Employee
             </Button>
@@ -558,11 +651,18 @@ export default function AdminEmployees({ hideAdmin = false }: AdminEmployeesProp
                 </div>
 
                 <div className="flex justify-end gap-2">
-                  <Button type="button" variant="outline" onClick={() => handleDialogClose(false)}>
+                  <Button type="button" variant="outline" onClick={() => handleDialogClose(false)} disabled={submitting}>
                     Cancel
                   </Button>
-                  <Button type="submit">
-                    {editingEmployee ? 'Update Employee' : 'Create Employee'}
+                  <Button type="submit" disabled={submitting}>
+                    {submitting ? (
+                      <>
+                        <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-background border-t-transparent" />
+                        {editingEmployee ? 'Updating...' : 'Creating...'}
+                      </>
+                    ) : (
+                      editingEmployee ? 'Update Employee' : 'Create Employee'
+                    )}
                   </Button>
                 </div>
               </form>
