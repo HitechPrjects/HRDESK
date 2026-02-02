@@ -1,10 +1,12 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': 'https://hrdesk.htge.org',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Origin': 'https://hrdesk.htge.org', // your frontend origin
+  'Access-Control-Allow-Headers': 'Authorization, X-Client-Info, Apikey, Content-Type', // headers your frontend sends
+  'Access-Control-Allow-Methods': 'POST, OPTIONS', // allowed methods
+  'Access-Control-Allow-Credentials': 'true', // allow cookies or auth headers
 };
+
 
 Deno.serve(async (req) => {
   // Handle CORS preflight
