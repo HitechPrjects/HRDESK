@@ -21,6 +21,7 @@ import {
   LogOut,
   Menu,
   X,
+  ChevronLeft,
 } from 'lucide-react';
 
 interface SidebarItem {
@@ -31,7 +32,7 @@ interface SidebarItem {
 
 interface SidebarProps {
   items: SidebarItem[];
-  title?: React.ReactNode;
+  title: string;
 }
 
 export function Sidebar({ items, title }: SidebarProps) {
@@ -75,11 +76,22 @@ export function Sidebar({ items, title }: SidebarProps) {
         <div className="flex h-full flex-col">
           {/* Header */}
           <div className="flex h-16 items-center justify-between border-b border-sidebar-border px-4">
-            {!collapsed && title && (
-              <div className="flex items-center justify-center w-full">
-                {title}
-              </div>
+            {!collapsed && (
+              <h1 className="text-lg font-bold text-sidebar-foreground">{title}</h1>
             )}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="hidden md:flex text-sidebar-foreground hover:bg-sidebar-accent"
+              onClick={() => setCollapsed(!collapsed)}
+            >
+              <ChevronLeft
+                className={cn(
+                  'h-4 w-4 transition-transform',
+                  collapsed && 'rotate-180'
+                )}
+              />
+            </Button>
           </div>
 
           {/* Navigation */}

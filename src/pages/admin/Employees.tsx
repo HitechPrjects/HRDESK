@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
@@ -16,25 +16,9 @@ import { Plus, Pencil, Trash2, UserX, Search, Eye, EyeOff } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useAuth } from '@/contexts/AuthContext';
 
-function getBackendErrorMessage(error: any): string {
-  const contextBody = error?.context?.body;
-
-  if (typeof contextBody === 'string') {
-    try {
-      const parsed = JSON.parse(contextBody);
-      if (parsed?.error) return String(parsed.error);
-      if (parsed?.message) return String(parsed.message);
-    } catch {
-      // ignore parse errors
-    }
-  }
-
-  if (contextBody && typeof contextBody === 'object') {
-    if (contextBody.error) return String(contextBody.error);
-    if (contextBody.message) return String(contextBody.message);
-  }
-
+function getErrorMessage(error: any): string {
   if (error?.message) return String(error.message);
+  if (typeof error === 'string') return error;
   return 'Request failed';
 }
 
@@ -213,7 +197,7 @@ export default function AdminEmployees({ hideAdmin = false }: AdminEmployeesProp
           description: 'Employee updated successfully',
         });
       } else {
-        // Create new employee
+        // Create new employee using Supabase Auth
         if (!data.password) {
           toast({
             title: 'Error',
@@ -224,52 +208,84 @@ export default function AdminEmployees({ hideAdmin = false }: AdminEmployeesProp
           return;
         }
 
-        const { data: result, error } = await supabase.functions.invoke('create-user', {
-          body: {
-            email: data.email,
-            password: data.password,
+        // Sign up the new user
+        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+          email: data.email,
+          password: data.password,
+          options: {
+            emailRedirectTo: `${window.location.origin}/`,
+            data: {
+              first_name: data.first_name,
+              last_name: data.last_name,
+            },
+          },
+        });
+
+        if (signUpError) {
+          const message = getErrorMessage(signUpError);
+          form.setError('email', { type: 'manual', message });
+          toast({
+            title: 'Error',
+            description: message,
+            variant: 'destructive',
+          });
+          setSubmitting(false);
+          return;
+        }
+
+        if (!signUpData.user) {
+          toast({
+            title: 'Error',
+            description: 'Failed to create user account',
+            variant: 'destructive',
+          });
+          setSubmitting(false);
+          return;
+        }
+
+        // Wait a moment for the profile to be created by the trigger
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+        // Update the profile with additional details
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .update({
             first_name: data.first_name,
             last_name: data.last_name,
-            role: data.role,
             phone: data.phone || null,
             department_id: data.department_id || null,
             designation_id: data.designation_id || null,
             date_of_birth: data.date_of_birth || null,
-            joining_date: data.joining_date || null,
+            joining_date: data.joining_date || new Date().toISOString().split('T')[0],
             employee_id: data.employee_id || null,
             reporting_manager: data.reporting_manager || null,
-          },
-        });
+          })
+          .eq('user_id', signUpData.user.id);
 
-        // IMPORTANT: don't throw here (prevents blank-screen/unhandled rejection);
-        // surface the backend error clearly in the form + toast.
-        if (error) {
-          const message = getBackendErrorMessage(error);
-          form.setError('email', { type: 'manual', message });
-          toast({
-            title: 'Error',
-            description: message,
-            variant: 'destructive',
-          });
-          setSubmitting(false);
-          return;
+        if (profileError) {
+          console.error('Profile update error:', profileError);
         }
 
-        if ((result as any)?.error) {
-          const message = String((result as any).error);
-          form.setError('email', { type: 'manual', message });
+        // Assign role to the user
+        const { error: roleError } = await supabase
+          .from('user_roles')
+          .insert({
+            user_id: signUpData.user.id,
+            role: data.role,
+          });
+
+        if (roleError) {
+          console.error('Role assignment error:', roleError);
           toast({
-            title: 'Error',
-            description: message,
+            title: 'Warning',
+            description: 'User created but role assignment failed. Please assign role manually.',
             variant: 'destructive',
           });
-          setSubmitting(false);
-          return;
         }
 
         toast({
           title: 'Success',
-          description: `${data.role === 'hr' ? 'HR' : 'Employee'} created successfully`,
+          description: `${data.role === 'hr' ? 'HR' : 'Employee'} created successfully. They will need to verify their email.`,
         });
       }
 
@@ -280,7 +296,7 @@ export default function AdminEmployees({ hideAdmin = false }: AdminEmployeesProp
     } catch (error: any) {
       toast({
         title: 'Error',
-        description: getBackendErrorMessage(error) || 'Failed to save employee',
+        description: getErrorMessage(error) || 'Failed to save employee',
         variant: 'destructive',
       });
     } finally {
@@ -428,9 +444,6 @@ export default function AdminEmployees({ hideAdmin = false }: AdminEmployeesProp
               <DialogTitle>
                 {editingEmployee ? 'Edit Employee' : 'Add New Employee'}
               </DialogTitle>
-              <DialogDescription>
-                Fill in the employee details below.
-              </DialogDescription>
             </DialogHeader>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
