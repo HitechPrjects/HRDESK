@@ -1386,6 +1386,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      hash_password: { Args: { password: string }; Returns: string }
       is_admin: { Args: never; Returns: boolean }
       is_admin_or_hr: { Args: never; Returns: boolean }
       is_hr: { Args: never; Returns: boolean }
@@ -1393,6 +1394,10 @@ export type Database = {
       mask_sensitive_value: {
         Args: { value: string; visible_chars?: number }
         Returns: string
+      }
+      verify_password: {
+        Args: { password: string; password_hash: string }
+        Returns: boolean
       }
     }
     Enums: {
