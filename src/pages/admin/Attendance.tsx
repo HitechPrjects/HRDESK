@@ -190,7 +190,7 @@ export default function AdminAttendance({ viewMode: initialViewMode }: AdminAtte
                 <TableHead>Date</TableHead>
                 <TableHead>Check In</TableHead>
                 <TableHead>Check Out</TableHead>
-                {(isAdmin || isHR) && <TableHead>IP Address</TableHead>}
+                <TableHead>IP Address</TableHead>
                 <TableHead>Working Hours</TableHead>
                 <TableHead>Status</TableHead>
               </TableRow>
@@ -212,11 +212,9 @@ export default function AdminAttendance({ viewMode: initialViewMode }: AdminAtte
                       ? format(new Date(record.check_out_time), 'hh:mm:ss a')
                       : '-'}
                   </TableCell>
-                  {(isAdmin || isHR) && (
-                    <TableCell className="font-mono text-sm">
-                      {record.check_in_ip || '-'}
-                    </TableCell>
-                  )}
+                  <TableCell className="font-mono text-sm">
+                    {record.check_in_ip || '-'}
+                  </TableCell>
                   <TableCell className="font-mono">
                     {formatWorkingHours(record.check_in_time, record.check_out_time, record.total_hours)}
                   </TableCell>
@@ -225,7 +223,7 @@ export default function AdminAttendance({ viewMode: initialViewMode }: AdminAtte
               ))}
               {filteredAttendance.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={isEmployee ? 6 : 7} className="text-center text-muted-foreground">
+                  <TableCell colSpan={7} className="text-center text-muted-foreground">
                     No attendance records for this date
                   </TableCell>
                 </TableRow>

@@ -10,8 +10,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
+import { signIn, getRedirectPath } from '@/lib/auth';
 import { useAuth } from '@/contexts/AuthContext';
-import { tableLogin } from '@/lib/tableAuth';
+import { sanitizeInput, isValidEmail } from '@/lib/security';
 
 const loginSchema = z.object({
   email: z.string()
@@ -25,27 +26,15 @@ const loginSchema = z.object({
 
 type LoginForm = z.infer<typeof loginSchema>;
 
-function getRedirectPath(role: string): string {
-  switch (role) {
-    case 'admin':
-      return '/admin';
-    case 'hr':
-      return '/hr';
-    case 'employee':
-      return '/employee';
-    default:
-      return '/';
-  }
-}
-
 export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
+  const [attempts, setAttempts] = useState(0);
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
-  const { authUser, loading, refreshUser } = useAuth();
+  const { authUser, loading } = useAuth();
 
   const sessionExpired = location.state?.expired;
 
@@ -75,31 +64,33 @@ export default function Login() {
 
   const onSubmit = async (data: LoginForm) => {
     setLoginError(null);
+
+    // Validate email format
+    const sanitizedEmail = sanitizeInput(data.email.toLowerCase());
+    if (!isValidEmail(sanitizedEmail)) {
+      setLoginError('Please enter a valid email address.');
+      return;
+    }
+
     setIsLoading(true);
-
     try {
-      const result = await tableLogin(data.email, data.password);
-      
-      if (!result.success) {
-        setLoginError(result.error || 'Login failed');
-        setIsLoading(false);
-        return;
-      }
-
-      // Refresh the auth context
-      await refreshUser();
-
+      await signIn(sanitizedEmail, data.password);
+      setAttempts(0);
       toast({
         title: 'Welcome back!',
         description: 'Login successful',
       });
-
-      // Navigate based on role
-      if (result.user) {
-        navigate(getRedirectPath(result.user.role), { replace: true });
-      }
     } catch (error: any) {
-      setLoginError('Login failed. Please try again.');
+      setAttempts(prev => prev + 1);
+      
+      // Generic error message to prevent user enumeration
+      const errorMessage = attempts >= 2 
+        ? 'Invalid credentials. Please check your email and password.'
+        : 'Login failed. Please try again.';
+      
+      setLoginError(errorMessage);
+      
+      // Don't expose specific error details
       console.error('Login error occurred');
     } finally {
       setIsLoading(false);

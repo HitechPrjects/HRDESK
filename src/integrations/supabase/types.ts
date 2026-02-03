@@ -62,13 +62,6 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "announcements_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "profiles_public"
-            referencedColumns: ["id"]
-          },
         ]
       }
       attendance: {
@@ -125,13 +118,6 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "attendance_profile_id_fkey"
-            columns: ["profile_id"]
-            isOneToOne: false
-            referencedRelation: "profiles_public"
-            referencedColumns: ["id"]
-          },
         ]
       }
       departments: {
@@ -165,13 +151,6 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "fk_departments_created_by"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "profiles_public"
             referencedColumns: ["id"]
           },
         ]
@@ -210,13 +189,6 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "fk_designations_created_by"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "profiles_public"
             referencedColumns: ["id"]
           },
         ]
@@ -378,24 +350,10 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "goalsheets_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "profiles_public"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "goalsheets_profile_id_fkey"
             columns: ["profile_id"]
             isOneToOne: false
             referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "goalsheets_profile_id_fkey"
-            columns: ["profile_id"]
-            isOneToOne: false
-            referencedRelation: "profiles_public"
             referencedColumns: ["id"]
           },
           {
@@ -406,24 +364,10 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "goalsheets_reporting_manager_id_fkey"
-            columns: ["reporting_manager_id"]
-            isOneToOne: false
-            referencedRelation: "profiles_public"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "goalsheets_reviewed_by_fkey"
             columns: ["reviewed_by"]
             isOneToOne: false
             referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "goalsheets_reviewed_by_fkey"
-            columns: ["reviewed_by"]
-            isOneToOne: false
-            referencedRelation: "profiles_public"
             referencedColumns: ["id"]
           },
         ]
@@ -475,13 +419,6 @@ export type Database = {
             columns: ["profile_id"]
             isOneToOne: false
             referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "leave_balances_profile_id_fkey"
-            columns: ["profile_id"]
-            isOneToOne: false
-            referencedRelation: "profiles_public"
             referencedColumns: ["id"]
           },
         ]
@@ -574,13 +511,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "leaves_approved_by_fkey"
-            columns: ["approved_by"]
-            isOneToOne: false
-            referencedRelation: "profiles_public"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "leaves_leave_type_id_fkey"
             columns: ["leave_type_id"]
             isOneToOne: false
@@ -592,13 +522,6 @@ export type Database = {
             columns: ["profile_id"]
             isOneToOne: false
             referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "leaves_profile_id_fkey"
-            columns: ["profile_id"]
-            isOneToOne: false
-            referencedRelation: "profiles_public"
             referencedColumns: ["id"]
           },
         ]
@@ -697,24 +620,10 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "payroll_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "profiles_public"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "payroll_profile_id_fkey"
             columns: ["profile_id"]
             isOneToOne: false
             referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "payroll_profile_id_fkey"
-            columns: ["profile_id"]
-            isOneToOne: false
-            referencedRelation: "profiles_public"
             referencedColumns: ["id"]
           },
         ]
@@ -762,13 +671,6 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "payslips_profile_id_fkey"
-            columns: ["profile_id"]
-            isOneToOne: false
-            referencedRelation: "profiles_public"
-            referencedColumns: ["id"]
-          },
         ]
       }
       profiles: {
@@ -798,7 +700,6 @@ export type Database = {
           joining_date: string | null
           last_name: string
           pan_number: string | null
-          password_hash: string | null
           phone: string | null
           pincode: string | null
           reporting_manager: string | null
@@ -832,7 +733,6 @@ export type Database = {
           joining_date?: string | null
           last_name: string
           pan_number?: string | null
-          password_hash?: string | null
           phone?: string | null
           pincode?: string | null
           reporting_manager?: string | null
@@ -866,7 +766,6 @@ export type Database = {
           joining_date?: string | null
           last_name?: string
           pan_number?: string | null
-          password_hash?: string | null
           phone?: string | null
           pincode?: string | null
           reporting_manager?: string | null
@@ -967,24 +866,10 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "tasks_assigned_by_fkey"
-            columns: ["assigned_by"]
-            isOneToOne: false
-            referencedRelation: "profiles_public"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "tasks_assigned_to_fkey"
             columns: ["assigned_to"]
             isOneToOne: false
             referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "tasks_assigned_to_fkey"
-            columns: ["assigned_to"]
-            isOneToOne: false
-            referencedRelation: "profiles_public"
             referencedColumns: ["id"]
           },
         ]
@@ -1079,24 +964,10 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "timesheets_approved_by_fkey"
-            columns: ["approved_by"]
-            isOneToOne: false
-            referencedRelation: "profiles_public"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "timesheets_profile_id_fkey"
             columns: ["profile_id"]
             isOneToOne: false
             referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "timesheets_profile_id_fkey"
-            columns: ["profile_id"]
-            isOneToOne: false
-            referencedRelation: "profiles_public"
             referencedColumns: ["id"]
           },
         ]
@@ -1162,24 +1033,10 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "training_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "profiles_public"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "training_profile_id_fkey"
             columns: ["profile_id"]
             isOneToOne: false
             referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "training_profile_id_fkey"
-            columns: ["profile_id"]
-            isOneToOne: false
-            referencedRelation: "profiles_public"
             referencedColumns: ["id"]
           },
         ]
@@ -1205,171 +1062,11 @@ export type Database = {
         }
         Relationships: []
       }
-      user_sessions: {
-        Row: {
-          created_at: string
-          expires_at: string
-          id: string
-          profile_id: string
-          session_token: string
-        }
-        Insert: {
-          created_at?: string
-          expires_at: string
-          id?: string
-          profile_id: string
-          session_token: string
-        }
-        Update: {
-          created_at?: string
-          expires_at?: string
-          id?: string
-          profile_id?: string
-          session_token?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "user_sessions_profile_id_fkey"
-            columns: ["profile_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "user_sessions_profile_id_fkey"
-            columns: ["profile_id"]
-            isOneToOne: false
-            referencedRelation: "profiles_public"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
     }
     Views: {
-      profiles_public: {
-        Row: {
-          aadhar_number: string | null
-          address: string | null
-          avatar_url: string | null
-          bank_account_number: string | null
-          bank_ifsc: string | null
-          bank_name: string | null
-          city: string | null
-          country: string | null
-          created_at: string | null
-          date_of_birth: string | null
-          department_id: string | null
-          designation_id: string | null
-          email: string | null
-          emergency_contact_name: string | null
-          emergency_contact_phone: string | null
-          employee_id: string | null
-          employment_status:
-            | Database["public"]["Enums"]["employment_status"]
-            | null
-          first_name: string | null
-          gender: string | null
-          id: string | null
-          joining_date: string | null
-          last_name: string | null
-          pan_number: string | null
-          phone: string | null
-          pincode: string | null
-          reporting_manager: string | null
-          state: string | null
-          updated_at: string | null
-          user_id: string | null
-        }
-        Insert: {
-          aadhar_number?: string | null
-          address?: string | null
-          avatar_url?: string | null
-          bank_account_number?: string | null
-          bank_ifsc?: string | null
-          bank_name?: string | null
-          city?: string | null
-          country?: string | null
-          created_at?: string | null
-          date_of_birth?: string | null
-          department_id?: string | null
-          designation_id?: string | null
-          email?: string | null
-          emergency_contact_name?: string | null
-          emergency_contact_phone?: string | null
-          employee_id?: string | null
-          employment_status?:
-            | Database["public"]["Enums"]["employment_status"]
-            | null
-          first_name?: string | null
-          gender?: string | null
-          id?: string | null
-          joining_date?: string | null
-          last_name?: string | null
-          pan_number?: string | null
-          phone?: string | null
-          pincode?: string | null
-          reporting_manager?: string | null
-          state?: string | null
-          updated_at?: string | null
-          user_id?: string | null
-        }
-        Update: {
-          aadhar_number?: string | null
-          address?: string | null
-          avatar_url?: string | null
-          bank_account_number?: string | null
-          bank_ifsc?: string | null
-          bank_name?: string | null
-          city?: string | null
-          country?: string | null
-          created_at?: string | null
-          date_of_birth?: string | null
-          department_id?: string | null
-          designation_id?: string | null
-          email?: string | null
-          emergency_contact_name?: string | null
-          emergency_contact_phone?: string | null
-          employee_id?: string | null
-          employment_status?:
-            | Database["public"]["Enums"]["employment_status"]
-            | null
-          first_name?: string | null
-          gender?: string | null
-          id?: string | null
-          joining_date?: string | null
-          last_name?: string | null
-          pan_number?: string | null
-          phone?: string | null
-          pincode?: string | null
-          reporting_manager?: string | null
-          state?: string | null
-          updated_at?: string | null
-          user_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "profiles_department_id_fkey"
-            columns: ["department_id"]
-            isOneToOne: false
-            referencedRelation: "departments"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "profiles_designation_id_fkey"
-            columns: ["designation_id"]
-            isOneToOne: false
-            referencedRelation: "designations"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
+      [_ in never]: never
     }
     Functions: {
-      decrypt_sensitive_data: {
-        Args: { encrypted_data: string }
-        Returns: string
-      }
-      encrypt_sensitive_data: { Args: { data: string }; Returns: string }
       get_profile_id_for_user: { Args: { _user_id: string }; Returns: string }
       has_access_to_goalsheet: {
         Args: { _goalsheet_id: string }
@@ -1386,19 +1083,10 @@ export type Database = {
         }
         Returns: boolean
       }
-      hash_password: { Args: { password: string }; Returns: string }
       is_admin: { Args: never; Returns: boolean }
       is_admin_or_hr: { Args: never; Returns: boolean }
       is_hr: { Args: never; Returns: boolean }
       is_own_profile: { Args: { _profile_id: string }; Returns: boolean }
-      mask_sensitive_value: {
-        Args: { value: string; visible_chars?: number }
-        Returns: string
-      }
-      verify_password: {
-        Args: { password: string; password_hash: string }
-        Returns: boolean
-      }
     }
     Enums: {
       app_role: "admin" | "hr" | "employee"
