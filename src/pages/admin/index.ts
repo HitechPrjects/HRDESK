@@ -1,0 +1,13 @@
+export { default as AdminDashboard } from './Dashboard';
+export { default as AdminEmployees } from './Employees';
+export { default as AdminDepartments } from './Departments';
+export { default as AdminDesignations } from './Designations';
+export { default as AdminAttendance } from './Attendance';
+export { default as AdminTimesheets } from './Timesheets';
+export { default as AdminTasks } from './Tasks';
+export { default as AdminLeaves } from './Leaves';
+export { default as AdminTraining } from './Training';
+export { default as AdminGoalsheets } from './Goalsheets';
+export { default as AdminPayroll } from './Payroll';
+export { default as AdminAnnouncements } from './Announcements';
+export { default as AdminSettings } from './Settings';
