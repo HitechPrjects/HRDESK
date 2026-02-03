@@ -173,42 +173,22 @@ export default function AdminEmployees({ hideAdmin = false }: AdminEmployeesProp
           return;
         }
 
-        const { data: { session } } = await supabase.auth.getSession();
-
-if (!session || !session.access_token) {
-  throw new Error("Admin not logged in");
-}
-
-const res = await fetch(
-  "https://ccgqzmcuouzeffsrbggf.supabase.co/functions/v1/create-user",
-  {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${session.access_token}`, // ⭐ THIS IS THE KEY
-    },
-    body: JSON.stringify({
-      email: data.email,
-      password: data.password,
-      first_name: data.first_name,
-      last_name: data.last_name,
-      role: data.role,
-      phone: data.phone || null,
-      department_id: data.department_id || null,
-      designation_id: data.designation_id || null,
-      date_of_birth: data.date_of_birth || null,
-      joining_date: data.joining_date || null,
-      employee_id: data.employee_id || null,
-      reporting_manager: data.reporting_manager || null,
-    }),
-  }
-);
-
-const result = await res.json();
-
-if (!res.ok) {
-  throw new Error(result.error || "Failed to create user");
-}
+        const { data: result, error } = await supabase.functions.invoke('create-user', {
+          body: {
+            email: data.email,
+            password: data.password,
+            first_name: data.first_name,
+            last_name: data.last_name,
+            role: data.role,
+            phone: data.phone || null,
+            department_id: data.department_id || null,
+            designation_id: data.designation_id || null,
+            date_of_birth: data.date_of_birth || null,
+            joining_date: data.joining_date || null,
+            employee_id: data.employee_id || null,
+            reporting_manager: data.reporting_manager || null,
+          },
+        });
 
         if (error) throw error;
         if (result.error) throw new Error(result.error);
