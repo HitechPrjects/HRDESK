@@ -11,8 +11,8 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabaseUrl = Deno.env.get('PROJECT_URL')!;
+    const serviceRoleKey = Deno.env.get('SERVICE_ROLE_KEY')!;
     
     const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
       auth: {
