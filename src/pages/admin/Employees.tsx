@@ -207,8 +207,10 @@ if (!session) {
     const result = await res.json();
 
     if (!res.ok) {
-      throw new Error(result.error || "Failed to create user");
+      console.error("Backend error:", result);
+      throw new Error(JSON.stringify(result));
     }
+
 
 
         if (error) throw error;
