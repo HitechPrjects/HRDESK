@@ -25,3 +25,4 @@ dist-ssr
 env
 .env
 database
+seed-admin.js

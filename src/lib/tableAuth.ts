@@ -1,9 +1,11 @@
 import { supabase } from '@/integrations/supabase/client';
-import { hashPassword, verifyPassword } from './password';
 
+/**
+ * User object returned to the app
+ */
 export interface TableUser {
-  id: string;
-  profileId: string;
+  id: string;          // auth.users.id
+  profileId: string;   // profiles.id
   email: string;
   firstName: string;
   lastName: string;
@@ -16,76 +18,54 @@ export interface LoginResult {
   error?: string;
 }
 
-export interface CreateUserResult {
-  success: boolean;
-  userId?: string;
-  profileId?: string;
-  error?: string;
-}
-
 /**
- * Login using email and password against the profiles table
+ * LOGIN
+ * Uses Supabase Auth (email + password)
  */
-export async function tableLogin(email: string, password: string): Promise<LoginResult> {
+export async function tableLogin(
+  email: string,
+  password: string
+): Promise<LoginResult> {
   try {
-    // Find user by email in profiles table
+    // 1. Authenticate via Supabase Auth
+    const { data: authData, error: authError } =
+      await supabase.auth.signInWithPassword({
+        email: email.toLowerCase().trim(),
+        password,
+      });
+
+    if (authError || !authData.user) {
+      return { success: false, error: 'Invalid email or password' };
+    }
+
+    const userId = authData.user.id;
+
+    // 2. Fetch profile (created by trigger)
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('id, user_id, email, first_name, last_name, password_hash')
-      .eq('email', email.toLowerCase().trim())
+      .select('id, user_id, email, first_name, last_name')
+      .eq('user_id', userId)
       .single();
 
     if (profileError || !profile) {
-      return { success: false, error: 'Invalid email or password' };
+      return { success: false, error: 'Profile not found' };
     }
 
-    if (!profile.password_hash) {
-      return { success: false, error: 'Account not properly configured. Please contact admin.' };
-    }
-
-    // Verify password
-    const isValid = await verifyPassword(password, profile.password_hash);
-    if (!isValid) {
-      return { success: false, error: 'Invalid email or password' };
-    }
-
-    // Get user role
+    // 3. Fetch role
     const { data: roleData, error: roleError } = await supabase
       .from('user_roles')
       .select('role')
-      .eq('user_id', profile.user_id)
+      .eq('user_id', userId)
       .single();
 
     if (roleError || !roleData) {
       return { success: false, error: 'User role not found' };
     }
 
-    // Create session in user_sessions table
-    const sessionToken = generateSessionToken();
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 7); // 7 days expiry
-
-    const { error: sessionError } = await supabase
-      .from('user_sessions')
-      .insert({
-        profile_id: profile.id,
-        session_token: sessionToken,
-        expires_at: expiresAt.toISOString(),
-      });
-
-    if (sessionError) {
-      console.error('Session creation error:', sessionError);
-      return { success: false, error: 'Failed to create session' };
-    }
-
-    // Store session token in localStorage
-    localStorage.setItem('hrms_session_token', sessionToken);
-    localStorage.setItem('hrms_user_id', profile.user_id);
-
     return {
       success: true,
       user: {
-        id: profile.user_id,
+        id: userId,
         profileId: profile.id,
         email: profile.email,
         firstName: profile.first_name,
@@ -93,205 +73,204 @@ export async function tableLogin(email: string, password: string): Promise<Login
         role: roleData.role as 'admin' | 'hr' | 'employee',
       },
     };
-  } catch (error) {
-    console.error('Login error:', error);
-    return { success: false, error: 'Login failed. Please try again.' };
+  } catch (err) {
+    console.error('Login error:', err);
+    return { success: false, error: 'Login failed' };
   }
 }
 
 /**
- * Logout - clear session from database and localStorage
+ * LOGOUT
+ * Clears Supabase Auth session
  */
 export async function tableLogout(): Promise<void> {
-  const sessionToken = localStorage.getItem('hrms_session_token');
-  
-  if (sessionToken) {
-    await supabase
-      .from('user_sessions')
-      .delete()
-      .eq('session_token', sessionToken);
-  }
-
-  localStorage.removeItem('hrms_session_token');
-  localStorage.removeItem('hrms_user_id');
+  await supabase.auth.signOut();
 }
-
 /**
- * Get current session user
+ * Get currently authenticated user with profile + role
  */
 export async function getSessionUser(): Promise<TableUser | null> {
-  const sessionToken = localStorage.getItem('hrms_session_token');
-  
-  if (!sessionToken) {
-    return null;
-  }
-
   try {
-    // Check if session is valid
-    const { data: session, error: sessionError } = await supabase
-      .from('user_sessions')
-      .select('profile_id, expires_at')
-      .eq('session_token', sessionToken)
-      .single();
+    // 1. Get auth session
+    const {
+      data: { session },
+      error: sessionError,
+    } = await supabase.auth.getSession();
 
-    if (sessionError || !session) {
-      localStorage.removeItem('hrms_session_token');
-      localStorage.removeItem('hrms_user_id');
+    if (sessionError || !session?.user) {
       return null;
     }
 
-    // Check if session expired
-    if (new Date(session.expires_at) < new Date()) {
-      await supabase.from('user_sessions').delete().eq('session_token', sessionToken);
-      localStorage.removeItem('hrms_session_token');
-      localStorage.removeItem('hrms_user_id');
-      return null;
-    }
+    const userId = session.user.id;
 
-    // Get profile and role
+    // 2. Fetch profile
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('id, user_id, email, first_name, last_name')
-      .eq('id', session.profile_id)
+      .eq('user_id', userId)
       .single();
 
     if (profileError || !profile) {
       return null;
     }
 
+    // 3. Fetch role
     const { data: roleData } = await supabase
       .from('user_roles')
       .select('role')
-      .eq('user_id', profile.user_id)
+      .eq('user_id', userId)
       .single();
 
     return {
-      id: profile.user_id,
+      id: userId,
       profileId: profile.id,
       email: profile.email,
       firstName: profile.first_name,
       lastName: profile.last_name,
       role: (roleData?.role as 'admin' | 'hr' | 'employee') || 'employee',
     };
-  } catch (error) {
-    console.error('Session check error:', error);
+  } catch (err) {
+    console.error('Get session user error:', err);
     return null;
   }
 }
 
 /**
- * Create a new user with hashed password stored in profiles table
+ * SIGN UP (create user)
+ * Supabase Auth creates auth.users
+ * Trigger creates profiles row automatically
  */
-export async function createTableUser(
+export async function tableSignUp(
   email: string,
   password: string,
   firstName: string,
-  lastName: string,
-  role: 'hr' | 'employee',
-  additionalData?: {
-    phone?: string;
-    department_id?: string;
-    designation_id?: string;
-    date_of_birth?: string;
-    joining_date?: string;
-    employee_id?: string;
-    reporting_manager?: string;
-  }
-): Promise<CreateUserResult> {
+  lastName: string
+): Promise<{ success: boolean; error?: string }> {
   try {
-    // Check if email already exists
-    const { data: existing } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('email', email.toLowerCase().trim())
-      .single();
-
-    if (existing) {
-      return { success: false, error: 'Email already registered' };
-    }
-
-    // Hash the password
-    const passwordHash = await hashPassword(password);
-
-    // Generate a unique user_id (UUID format)
-    const userId = crypto.randomUUID();
-
-    // Create profile with hashed password
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .insert({
-        user_id: userId,
-        email: email.toLowerCase().trim(),
-        first_name: firstName,
-        last_name: lastName,
-        password_hash: passwordHash,
-        phone: additionalData?.phone || null,
-        department_id: additionalData?.department_id || null,
-        designation_id: additionalData?.designation_id || null,
-        date_of_birth: additionalData?.date_of_birth || null,
-        joining_date: additionalData?.joining_date || new Date().toISOString().split('T')[0],
-        employee_id: additionalData?.employee_id || null,
-        reporting_manager: additionalData?.reporting_manager || null,
-      })
-      .select('id')
-      .single();
-
-    if (profileError) {
-      console.error('Profile creation error:', profileError);
-      return { success: false, error: profileError.message };
-    }
-
-    // Create user role
-    const { error: roleError } = await supabase
-      .from('user_roles')
-      .insert({
-        user_id: userId,
-        role: role,
-      });
-
-    if (roleError) {
-      console.error('Role creation error:', roleError);
-      // Rollback profile creation
-      await supabase.from('profiles').delete().eq('id', profile.id);
-      return { success: false, error: 'Failed to assign role' };
-    }
-
-    return {
-      success: true,
-      userId: userId,
-      profileId: profile.id,
-    };
-  } catch (error) {
-    console.error('Create user error:', error);
-    return { success: false, error: 'Failed to create user' };
-  }
-}
-
-/**
- * Update user password
- */
-export async function updatePassword(profileId: string, newPassword: string): Promise<{ success: boolean; error?: string }> {
-  try {
-    const passwordHash = await hashPassword(newPassword);
-    
-    const { error } = await supabase
-      .from('profiles')
-      .update({ password_hash: passwordHash })
-      .eq('id', profileId);
+    const { error } = await supabase.auth.signUp({
+      email: email.toLowerCase().trim(),
+      password,
+      options: {
+        data: {
+          first_name: firstName,
+          last_name: lastName,
+        },
+      },
+    });
 
     if (error) {
       return { success: false, error: error.message };
     }
 
     return { success: true };
-  } catch (error) {
-    console.error('Update password error:', error);
-    return { success: false, error: 'Failed to update password' };
+  } catch (err) {
+    console.error('Signup error:', err);
+    return { success: false, error: 'Signup failed' };
   }
 }
 
-function generateSessionToken(): string {
-  const array = new Uint8Array(32);
-  crypto.getRandomValues(array);
-  return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
+/**
+ * Assign role to a user (admin/hr only via RLS)
+ */
+export async function assignUserRole(
+  userId: string,
+  role: 'admin' | 'hr' | 'employee'
+): Promise<{ success: boolean; error?: string }> {
+  const { error } = await supabase
+    .from('user_roles')
+    .insert({ user_id: userId, role });
+
+  if (error) {
+    return { success: false, error: error.message };
+  }
+
+  return { success: true };
 }
+
+/**
+ * Update password (Supabase Auth)
+ */
+export async function updatePassword(
+  newPassword: string
+): Promise<{ success: boolean; error?: string }> {
+  const { error } = await supabase.auth.updateUser({
+    password: newPassword,
+  });
+
+  if (error) {
+    return { success: false, error: error.message };
+  }
+
+  return { success: true };
+}
+/**
+ * Check if the current user has a specific role
+ */
+export async function hasRole(
+  role: 'admin' | 'hr' | 'employee'
+): Promise<boolean> {
+  try {
+    const user = await getSessionUser();
+    if (!user) return false;
+    return user.role === role;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Convenience helpers
+ */
+export async function isAdmin(): Promise<boolean> {
+  return hasRole('admin');
+}
+
+export async function isHR(): Promise<boolean> {
+  return hasRole('hr');
+}
+
+export async function isEmployee(): Promise<boolean> {
+  return hasRole('employee');
+}
+
+/**
+ * Force refresh the auth session
+ * Useful after role changes
+ */
+export async function refreshSession(): Promise<void> {
+  await supabase.auth.refreshSession();
+}
+
+/**
+ * Subscribe to auth state changes
+ * Useful for global auth context
+ */
+export function onAuthStateChange(
+  callback: (event: string) => void
+) {
+  return supabase.auth.onAuthStateChange((event) => {
+    callback(event);
+  });
+}
+
+/**
+ * Get raw Supabase auth user
+ * (useful for debugging / advanced cases)
+ */
+export async function getAuthUser() {
+  const { data } = await supabase.auth.getUser();
+  return data.user ?? null;
+}
+
+/**
+ * Completely sign out and clear state
+ */
+export async function fullLogout(): Promise<void> {
+  await supabase.auth.signOut();
+}
+
+/**
+ * END OF FILE
+ * All authentication is now handled by Supabase Auth
+ * Profiles and roles are fetched via RLS-protected tables
+ */
