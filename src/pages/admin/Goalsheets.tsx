@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -54,11 +54,9 @@ export default function AdminGoalsheets({ viewMode: initialViewMode }: AdminGoal
   const isHR = authUser?.role === 'hr';
   const isEmployee = authUser?.role === 'employee';
 
-  useEffect(() => {
-    fetchData();
-  }, [viewMode, authUser]);
+  
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     if (!authUser) return;
 
     try {
@@ -120,7 +118,11 @@ export default function AdminGoalsheets({ viewMode: initialViewMode }: AdminGoal
     } finally {
       setLoading(false);
     }
-  };
+  }, [authUser, viewMode, fromDate, toDate, isEmployee]);
+
+  useEffect(() => {
+      fetchData();
+    }, [fetchData]);
 
   const fetchGoalItems = async (goalsheetId: string) => {
     const { data } = await supabase
