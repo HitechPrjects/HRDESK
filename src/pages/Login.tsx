@@ -112,15 +112,12 @@ export default function Login() {
     <div className="flex min-h-screen items-center justify-center bg-muted/30 p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-4 text-center">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
-            <Building2 className="h-8 w-8 text-primary" />
-          </div>
-          <div>
-            <CardTitle className="text-2xl font-bold">HRMS Portal</CardTitle>
-            <CardDescription>
-              Sign in to access your dashboard
-            </CardDescription>
-          </div>
+         <img 
+            src="/favicon.jpg" 
+            alt="company-logo" 
+            className="w-24 sm:w-28 md:w-32 lg:w-36 mx-auto rounded-lg" 
+          />
+
         </CardHeader>
         <CardContent>
           {loginError && (
@@ -189,6 +186,7 @@ export default function Login() {
               <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? 'Signing in...' : 'Sign In'}
               </Button>
+              <p className='text-center text-sm'>If you forgot you password Contact administrator</p>
             </form>
           </Form>
         </CardContent>
