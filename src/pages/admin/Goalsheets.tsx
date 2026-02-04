@@ -32,7 +32,9 @@ export default function AdminGoalsheets({ viewMode: initialViewMode }: AdminGoal
   const [goalsheets, setGoalsheets] = useState<Goalsheet[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [targetTypes, setTargetTypes] = useState<TargetType[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true);     // first load only
+  const [initialLoad, setInitialLoad] = useState(true);
+
   const [viewMode, setViewMode] = useState<'all' | 'my'>(initialViewMode || 'all');
   
   // Filters
@@ -56,13 +58,14 @@ export default function AdminGoalsheets({ viewMode: initialViewMode }: AdminGoal
 
   useEffect(() => {
     fetchData();
-  }, [viewMode, authUser]);
+  }, [authUser]);
+
 
   const fetchData = async () => {
     if (!authUser) return;
 
     try {
-      setLoading(true);
+      if (initialLoad) setLoading(true);
 
       // Fetch target types
       const { data: types } = await supabase
@@ -119,6 +122,7 @@ export default function AdminGoalsheets({ viewMode: initialViewMode }: AdminGoal
       console.error('Error fetching goalsheets:', error);
     } finally {
       setLoading(false);
+      setInitialLoad(false);
     }
   };
 
@@ -212,7 +216,7 @@ export default function AdminGoalsheets({ viewMode: initialViewMode }: AdminGoal
           {/* Admin/HR: Create button only */}
           {(isAdmin || isHR) && viewMode === 'all' && (
             <div className="flex items-end gap-4">
-              <Button onClick={() => setCreateDialogOpen(true)} className="bg-blue-600 hover:bg-blue-700">
+              <Button type="button" onClick={() => setCreateDialogOpen(true)} className="bg-blue-600 hover:bg-blue-700">
                 <Plus className="mr-2 h-4 w-4" />
                 Create Goalsheet
               </Button>
@@ -253,7 +257,12 @@ export default function AdminGoalsheets({ viewMode: initialViewMode }: AdminGoal
             {(isHR || isAdmin) && (
               <Button 
                 variant={viewMode === 'my' ? 'default' : 'outline'}
-                onClick={() => setViewMode(viewMode === 'my' ? 'all' : 'my')}
+                                onClick={() => {
+                  const next = viewMode === 'my' ? 'all' : 'my';
+                  setViewMode(next);
+                  fetchData();
+                }}
+
                 className={viewMode === 'my' ? 'bg-blue-600 hover:bg-blue-700' : ''}
               >
                 {viewMode === 'my' ? 'Back' : 'My Goalsheet Details'}

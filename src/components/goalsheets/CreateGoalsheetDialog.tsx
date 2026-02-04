@@ -1,10 +1,21 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { Employee, TargetType } from './types';
@@ -18,29 +29,72 @@ interface CreateGoalsheetDialogProps {
   targetTypes: TargetType[];
 }
 
-export function CreateGoalsheetDialog({ 
-  open, 
-  onOpenChange, 
-  onSuccess, 
+export function CreateGoalsheetDialog({
+  open,
+  onOpenChange,
+  onSuccess,
   employees,
-  targetTypes
+  targetTypes,
 }: CreateGoalsheetDialogProps) {
   const { authUser } = useAuth();
   const { toast } = useToast();
+
   const [loading, setLoading] = useState(false);
-  const [selectedEmployee, setSelectedEmployee] = useState<string>('');
-  const [selectedMonth, setSelectedMonth] = useState<string>('');
-  const [selectedYear, setSelectedYear] = useState<string>(new Date().getFullYear().toString());
-  const [reportingManager, setReportingManager] = useState<string>('');
-  
-  // Goal items - target and goal pairs
-  const [goalItems, setGoalItems] = useState<Array<{ targetTypeId: string; goal: string }>>([
+
+  const [selectedEmployee, setSelectedEmployee] = useState('');
+  const [selectedMonth, setSelectedMonth] = useState('');
+  const [selectedYear, setSelectedYear] = useState(
+    new Date().getFullYear().toString()
+  );
+  const [reportingManager, setReportingManager] = useState('');
+
+  const [goalItems, setGoalItems] = useState<
+    Array<{ targetTypeId: string; goal: string }>
+  >([
     { targetTypeId: '', goal: '' },
     { targetTypeId: '', goal: '' },
     { targetTypeId: '', goal: '' },
     { targetTypeId: '', goal: '' },
     { targetTypeId: '', goal: '' },
     { targetTypeId: '', goal: '' },
+  ]);
+
+  /* =====================================================
+     ✅ FIX 1: Restore saved draft when component mounts
+  ===================================================== */
+  useEffect(() => {
+    const saved = localStorage.getItem('goalsheetDraft');
+    if (saved) {
+      const data = JSON.parse(saved);
+
+      setSelectedEmployee(data.selectedEmployee || '');
+      setSelectedMonth(data.selectedMonth || '');
+      setSelectedYear(data.selectedYear || new Date().getFullYear().toString());
+      setReportingManager(data.reportingManager || '');
+      setGoalItems(data.goalItems || []);
+    }
+  }, []);
+
+  /* =====================================================
+     ✅ FIX 2: Save draft whenever form changes
+  ===================================================== */
+  useEffect(() => {
+    localStorage.setItem(
+      'goalsheetDraft',
+      JSON.stringify({
+        selectedEmployee,
+        selectedMonth,
+        selectedYear,
+        reportingManager,
+        goalItems,
+      })
+    );
+  }, [
+    selectedEmployee,
+    selectedMonth,
+    selectedYear,
+    reportingManager,
+    goalItems,
   ]);
 
   const months = [
@@ -60,19 +114,34 @@ export function CreateGoalsheetDialog({
 
   const years = Array.from({ length: 5 }, (_, i) => {
     const year = new Date().getFullYear() - 2 + i;
-    return { value: year.toString(), label: year.toString() };
+    return {
+      value: year.toString(),
+      label: year.toString(),
+    };
   });
 
-  const selectedEmployeeData = employees.find(e => e.id === selectedEmployee);
+  const selectedEmployeeData = employees.find(
+    (e) => e.id === selectedEmployee
+  );
 
-  const updateGoalItem = (index: number, field: 'targetTypeId' | 'goal', value: string) => {
-    setGoalItems(prev => {
+  /* =====================================================
+     Update target/goal item
+  ===================================================== */
+  const updateGoalItem = (
+    index: number,
+    field: 'targetTypeId' | 'goal',
+    value: string
+  ) => {
+    setGoalItems((prev) => {
       const updated = [...prev];
       updated[index] = { ...updated[index], [field]: value };
       return updated;
     });
   };
 
+  /* =====================================================
+     ✅ FIXED SUBMIT HANDLER
+  ===================================================== */
   const handleSubmit = async () => {
     if (!selectedEmployee || !selectedMonth || !selectedYear) {
       toast({
@@ -83,7 +152,10 @@ export function CreateGoalsheetDialog({
       return;
     }
 
-    const validItems = goalItems.filter(item => item.targetTypeId && item.goal.trim());
+    const validItems = goalItems.filter(
+      (item) => item.targetTypeId && item.goal.trim()
+    );
+
     if (validItems.length === 0) {
       toast({
         title: 'Error',
@@ -94,36 +166,45 @@ export function CreateGoalsheetDialog({
     }
 
     setLoading(true);
+
     try {
       const month = parseInt(selectedMonth);
       const year = parseInt(selectedYear);
+
       const periodStart = new Date(year, month - 1, 1);
       const periodEnd = new Date(year, month, 0);
 
-      const monthName = months.find(m => m.value === selectedMonth)?.label;
+      const monthName = months.find(
+        (m) => m.value === selectedMonth
+      )?.label;
+
       const title = `Goalsheet|${monthName} ${year}`;
 
-      // Create goalsheet
-      const { data: goalsheet, error: goalsheetError } = await supabase
-        .from('goalsheets')
-        .insert({
-          profile_id: selectedEmployee,
-          title,
-          period_start: format(periodStart, 'yyyy-MM-dd'),
-          period_end: format(periodEnd, 'yyyy-MM-dd'),
-          month,
-          year,
-          status: 'not_started',
-          created_by: authUser?.profileId,
-          reporting_manager_id: authUser?.profileId,
-        })
-        .select()
-        .single();
+      /* -------------------------
+         Create goalsheet
+      ------------------------- */
+      const { data: goalsheet, error: goalsheetError } =
+        await supabase
+          .from('goalsheets')
+          .insert({
+            profile_id: selectedEmployee,
+            title,
+            period_start: format(periodStart, 'yyyy-MM-dd'),
+            period_end: format(periodEnd, 'yyyy-MM-dd'),
+            month,
+            year,
+            status: 'not_started',
+            created_by: authUser?.profileId,
+            reporting_manager_id: authUser?.profileId,
+          })
+          .select()
+          .single();
 
       if (goalsheetError) throw goalsheetError;
-
-      // Create goal items
-      const goalItemsToInsert = validItems.map(item => ({
+      /* -------------------------
+         Create goal items
+      ------------------------- */
+      const goalItemsToInsert = validItems.map((item) => ({
         goalsheet_id: goalsheet.id,
         target_type_id: item.targetTypeId,
         title: item.goal,
@@ -143,9 +224,14 @@ export function CreateGoalsheetDialog({
         description: 'Goalsheet created successfully',
       });
 
+      /* =====================================================
+         ✅ FIX 3: Clear saved draft after success
+      ===================================================== */
+      localStorage.removeItem('goalsheetDraft');
+
+      resetForm();
       onSuccess();
       onOpenChange(false);
-      resetForm();
     } catch (error: any) {
       toast({
         title: 'Error',
@@ -157,10 +243,14 @@ export function CreateGoalsheetDialog({
     }
   };
 
+  /* =====================================================
+     Reset form
+  ===================================================== */
   const resetForm = () => {
     setSelectedEmployee('');
     setSelectedMonth('');
     setReportingManager('');
+
     setGoalItems([
       { targetTypeId: '', goal: '' },
       { targetTypeId: '', goal: '' },
@@ -171,23 +261,34 @@ export function CreateGoalsheetDialog({
     ]);
   };
 
+  /* =====================================================
+     UI
+  ===================================================== */
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Select the target and fill in the goalsheet for each individual</DialogTitle>
+          <DialogTitle>
+            Select the target and fill in the goalsheet for each individual
+          </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-6">
+          {/* Employee selection */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>User Name*</Label>
-              <Select value={selectedEmployee} onValueChange={setSelectedEmployee}>
+
+              <Select
+                value={selectedEmployee}
+                onValueChange={setSelectedEmployee}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="-- Select User --" />
                 </SelectTrigger>
+
                 <SelectContent>
-                  {employees.map(emp => (
+                  {employees.map((emp) => (
                     <SelectItem key={emp.id} value={emp.id}>
                       {emp.first_name} {emp.last_name}
                     </SelectItem>
@@ -198,14 +299,14 @@ export function CreateGoalsheetDialog({
 
             <div className="space-y-2">
               <Label>Employee ID</Label>
-              <Input 
-                value={selectedEmployeeData?.employee_id || ''} 
-                disabled 
+              <Input
+                value={selectedEmployeeData?.employee_id || ''}
+                disabled
                 className="bg-muted"
               />
             </div>
           </div>
-
+          {/* Month / Year / Manager */}
           <div className="grid grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label>Month*</Label>
@@ -214,7 +315,7 @@ export function CreateGoalsheetDialog({
                   <SelectValue placeholder="-- Select Month --" />
                 </SelectTrigger>
                 <SelectContent>
-                  {months.map(month => (
+                  {months.map((month) => (
                     <SelectItem key={month.value} value={month.value}>
                       {month.label}
                     </SelectItem>
@@ -230,7 +331,7 @@ export function CreateGoalsheetDialog({
                   <SelectValue placeholder="-- Select Year --" />
                 </SelectTrigger>
                 <SelectContent>
-                  {years.map(year => (
+                  {years.map((year) => (
                     <SelectItem key={year.value} value={year.value}>
                       {year.label}
                     </SelectItem>
@@ -249,21 +350,29 @@ export function CreateGoalsheetDialog({
             </div>
           </div>
 
+          {/* Targets + Goals */}
           <div className="grid grid-cols-2 gap-6">
             <div className="space-y-3">
               <Label className="text-base font-semibold">Targets:</Label>
+
               {goalItems.map((item, index) => (
                 <div key={index} className="space-y-1">
-                  <Label className="text-sm">{index + 1}:{index < 5 ? '*' : ''}</Label>
-                  <Select 
-                    value={item.targetTypeId} 
-                    onValueChange={(v) => updateGoalItem(index, 'targetTypeId', v)}
+                  <Label className="text-sm">
+                    {index + 1}:{index < 5 ? '*' : ''}
+                  </Label>
+
+                  <Select
+                    value={item.targetTypeId}
+                    onValueChange={(v) =>
+                      updateGoalItem(index, 'targetTypeId', v)
+                    }
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="-- Select Target --" />
                     </SelectTrigger>
+
                     <SelectContent>
-                      {targetTypes.map(type => (
+                      {targetTypes.map((type) => (
                         <SelectItem key={type.id} value={type.id}>
                           {type.name}
                         </SelectItem>
@@ -276,24 +385,40 @@ export function CreateGoalsheetDialog({
 
             <div className="space-y-3">
               <Label className="text-base font-semibold">Goals:</Label>
+
               {goalItems.map((item, index) => (
                 <div key={index} className="space-y-1">
-                  <Label className="text-sm">{index + 1}:{index < 5 ? '*' : ''}</Label>
+                  <Label className="text-sm">
+                    {index + 1}:{index < 5 ? '*' : ''}
+                  </Label>
+
                   <Input
                     value={item.goal}
-                    onChange={(e) => updateGoalItem(index, 'goal', e.target.value)}
-                    placeholder=""
+                    onChange={(e) =>
+                      updateGoalItem(index, 'goal', e.target.value)
+                    }
                   />
                 </div>
               ))}
             </div>
           </div>
 
+          {/* Footer Buttons */}
           <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+            >
               Cancel
             </Button>
-            <Button onClick={handleSubmit} disabled={loading}>
+
+            {/* ⭐ CRITICAL FIX → prevents page reload */}
+            <Button
+              type="button"
+              onClick={handleSubmit}
+              disabled={loading}
+            >
               {loading ? 'Creating...' : 'Create Goalsheet'}
             </Button>
           </div>
