@@ -118,7 +118,7 @@ export default function AdminGoalsheets({ viewMode: initialViewMode }: AdminGoal
     } finally {
       setLoading(false);
     }
-  }, [authUser, viewMode, fromDate, toDate, isEmployee]);
+  };
 
   useEffect(() => {
       fetchData();
