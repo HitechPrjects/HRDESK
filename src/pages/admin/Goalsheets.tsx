@@ -56,7 +56,7 @@ export default function AdminGoalsheets({ viewMode: initialViewMode }: AdminGoal
 
   
 
-  const fetchData = useCallback(async () => {
+  const fetchData = async () => {
     if (!authUser) return;
 
     try {
@@ -122,7 +122,7 @@ export default function AdminGoalsheets({ viewMode: initialViewMode }: AdminGoal
 
   useEffect(() => {
       fetchData();
-    }, [fetchData]);
+    }, []);
 
   const fetchGoalItems = async (goalsheetId: string) => {
     const { data } = await supabase
@@ -286,49 +286,49 @@ export default function AdminGoalsheets({ viewMode: initialViewMode }: AdminGoal
       </Card>
 
       {/* Dialogs */}
-      <CreateGoalsheetDialog
-        open={createDialogOpen}
-        onOpenChange={setCreateDialogOpen}
-        onSuccess={fetchData}
-        employees={employees}
-        targetTypes={targetTypes}
-      />
+    <CreateGoalsheetDialog
+      open={createDialogOpen}
+      onOpenChange={setCreateDialogOpen}
+      employees={employees}
+      targetTypes={targetTypes}
+    />
 
-      <ViewGoalsheetDialog
-        open={viewDialogOpen}
-        onOpenChange={setViewDialogOpen}
-        goalsheet={selectedGoalsheet}
-        goalItems={selectedGoalItems}
-        targetTypes={targetTypes}
-      />
+    <ViewGoalsheetDialog
+      open={viewDialogOpen}
+      onOpenChange={setViewDialogOpen}
+      goalsheet={selectedGoalsheet}
+      goalItems={selectedGoalItems}
+      targetTypes={targetTypes}
+    />
 
-      <EditGoalsheetDialog
-        open={editDialogOpen}
-        onOpenChange={setEditDialogOpen}
-        goalsheet={selectedGoalsheet}
-        goalItems={selectedGoalItems}
-        targetTypes={targetTypes}
-        onSuccess={fetchData}
-      />
+    <EditGoalsheetDialog
+      open={editDialogOpen}
+      onOpenChange={setEditDialogOpen}
+      goalsheet={selectedGoalsheet}
+      goalItems={selectedGoalItems}
+      targetTypes={targetTypes}
+      onSuccess={fetchData}
+    />
 
-      <WeekEntryDialog
-        open={weekDialogOpen}
-        onOpenChange={setWeekDialogOpen}
-        goalsheet={selectedGoalsheet}
-        goalItems={selectedGoalItems}
-        targetTypes={targetTypes}
-        week={selectedWeek}
-        onSuccess={fetchData}
-      />
+    <WeekEntryDialog
+      open={weekDialogOpen}
+      onOpenChange={setWeekDialogOpen}
+      goalsheet={selectedGoalsheet}
+      goalItems={selectedGoalItems}
+      targetTypes={targetTypes}
+      week={selectedWeek}
+      onSuccess={fetchData}
+    />
 
-      <EnterPercentageDialog
-        open={percentageDialogOpen}
-        onOpenChange={setPercentageDialogOpen}
-        goalsheet={selectedGoalsheet}
-        goalItems={selectedGoalItems}
-        targetTypes={targetTypes}
-        onSuccess={fetchData}
-      />
+    <EnterPercentageDialog
+      open={percentageDialogOpen}
+      onOpenChange={setPercentageDialogOpen}
+      goalsheet={selectedGoalsheet}
+      goalItems={selectedGoalItems}
+      targetTypes={targetTypes}
+      onSuccess={fetchData}
+    />
+
     </div>
   );
 }
