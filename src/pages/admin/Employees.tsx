@@ -258,10 +258,21 @@ export default function AdminEmployees({ hideAdmin = false }: AdminEmployeesProp
   const handleDelete = async (employee: Employee) => {
     try {
       // Delete from profiles (cascades from auth when using edge function)
-      const { error } = await supabase
-        .from('profiles')
-        .delete()
-        .eq('id', employee.id);
+      const handleDelete = async (employee: Employee) => {
+      const { error } = await supabase.functions.invoke('delete-user', {
+        body: { user_id: employee.user_id },
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: 'Employee Deleted',
+        description: 'User removed completely',
+      });
+
+      fetchData();
+    };
+
 
       if (error) throw error;
 
@@ -281,7 +292,8 @@ export default function AdminEmployees({ hideAdmin = false }: AdminEmployeesProp
   };
 
   const filteredEmployees = employees.filter(e =>
-    `${e.first_name} ${e.last_name} ${e.email}`.toLowerCase().includes(search.toLowerCase())
+    `${e.first_name} ${e.last_name} ${e.email ?? ''}`.toLowerCase()
+
   );
 
   const getStatusBadge = (status: string) => {
