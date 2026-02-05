@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Search, Eye } from 'lucide-react';
+import { Calendar, Search, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { format, subDays } from 'date-fns';
@@ -155,6 +155,7 @@ export default function AdminTimesheets({ viewMode: initialViewMode }: AdminTime
             </div>
 
             <div className="flex items-center gap-2">
+              <Calendar className="h-4 w-4 text-muted-foreground" />
               <Input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
               <span className="text-sm text-muted-foreground">to</span>
               <Input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} />
@@ -200,7 +201,7 @@ export default function AdminTimesheets({ viewMode: initialViewMode }: AdminTime
       </Card>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden">
           <DialogHeader>
             <DialogTitle>
               Timesheet - {selectedRow?.first_name} {selectedRow?.last_name}
@@ -211,32 +212,34 @@ export default function AdminTimesheets({ viewMode: initialViewMode }: AdminTime
             Date: {selectedRow && format(new Date(selectedRow.timesheet_date), 'MMMM d, yyyy')}
           </p>
 
-          {entries.length === 0 ? (
-            <p className="text-center py-8 text-muted-foreground">No timesheet entries for this date</p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>#</TableHead>
-                  <TableHead>From</TableHead>
-                  <TableHead>To</TableHead>
-                  <TableHead>Hours</TableHead>
-                  <TableHead>Description</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {entries.map((e) => (
-                  <TableRow key={e.id}>
-                    <TableCell>{e.entry_number}</TableCell>
-                    <TableCell>{e.from_time || '-'}</TableCell>
-                    <TableCell>{e.to_time || '-'}</TableCell>
-                    <TableCell>{e.hours?.toFixed(2) || '-'}</TableCell>
-                    <TableCell>{e.description || '-'}</TableCell>
+          <div className="mt-4 max-h-[60vh] overflow-y-auto pr-2">
+            {entries.length === 0 ? (
+              <p className="text-center py-8 text-muted-foreground">No timesheet entries for this date</p>
+            ) : (
+              <Table>
+                <TableHeader className="bg-[hsl(var(--sidebar-background))]">
+                  <TableRow >
+                    <TableHead className="text-white">S.No</TableHead>
+                    <TableHead className="text-white">From</TableHead>
+                    <TableHead className="text-white">To</TableHead>
+                    <TableHead className="text-white">Hours</TableHead>
+                    <TableHead className="text-white">Description</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
+                </TableHeader>
+                <TableBody>
+                  {entries.map((e) => (
+                    <TableRow key={e.id}>
+                      <TableCell>{e.entry_number}</TableCell>
+                      <TableCell>{e.from_time || '-'}</TableCell>
+                      <TableCell>{e.to_time || '-'}</TableCell>
+                      <TableCell>{e.hours?.toFixed(2) || '-'}</TableCell>
+                      <TableCell>{e.description || '-'}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </div>
         </DialogContent>
       </Dialog>
     </div>

@@ -203,15 +203,15 @@ export default function AdminAttendance({ viewMode: initialViewMode }: AdminAtte
         <CardContent>
           <Table>
             <TableHeader>
-              <TableRow>
-                <TableHead>Employee</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead>Check In</TableHead>
-                <TableHead>Check Out</TableHead>
-                {!isEmployee && <TableHead>Check-in IP</TableHead>}
-                {!isEmployee && <TableHead>Check-out IP</TableHead>}
-                <TableHead>Working Hours</TableHead>
-                <TableHead>Status</TableHead>
+              <TableRow className="bg-[hsl(var(--sidebar-background))]">
+                <TableHead className='text-white'>Employee</TableHead>
+                <TableHead className='text-white'>Date</TableHead>
+                <TableHead className='text-white'>Check In</TableHead>
+                <TableHead className='text-white'>Check Out</TableHead>
+                {!isEmployee && <TableHead className='text-white'>Check-in IP</TableHead>}
+                {!isEmployee && <TableHead className='text-white'>Check-out IP</TableHead>}
+                <TableHead className='text-white'>Working Hours</TableHead>
+                <TableHead className='text-white'>Status</TableHead>
               </TableRow>
             </TableHeader>
 
