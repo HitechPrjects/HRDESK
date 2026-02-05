@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Calendar, Search, Eye } from 'lucide-react';
+import { Search, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { format, subDays } from 'date-fns';
@@ -155,7 +155,6 @@ export default function AdminTimesheets({ viewMode: initialViewMode }: AdminTime
             </div>
 
             <div className="flex items-center gap-2">
-              <Calendar className="h-4 w-4 text-muted-foreground" />
               <Input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
               <span className="text-sm text-muted-foreground">to</span>
               <Input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} />
