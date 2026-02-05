@@ -20,6 +20,7 @@ interface AttendanceRecord {
   check_in_time: string | null;
   check_out_time: string | null;
   check_in_ip: string | null;
+  check_out_ip: string | null;
   total_hours: number | null;
   status: string;
 }
@@ -59,9 +60,17 @@ export default function AdminAttendance({ viewMode: initialViewMode }: AdminAtte
       let query = supabase
         .from('attendance')
         .select(`
-          id, attendance_date, check_in_time, check_out_time, check_in_ip, total_hours, status,
+          id,
+          attendance_date,
+          check_in_time,
+          check_out_time,
+          check_in_ip,
+          check_out_ip,
+          total_hours,
+          status,
           profiles:profile_id(first_name, last_name, email)
         `)
+
         .eq('attendance_date', dateFilter)
         .order('check_in_time', { ascending: false });
 
@@ -190,7 +199,8 @@ export default function AdminAttendance({ viewMode: initialViewMode }: AdminAtte
                 <TableHead>Date</TableHead>
                 <TableHead>Check In</TableHead>
                 <TableHead>Check Out</TableHead>
-                <TableHead>IP Address</TableHead>
+                {!isEmployee && <TableHead>Check-in IP</TableHead>}
+                {!isEmployee && <TableHead>Check-out IP</TableHead>}
                 <TableHead>Working Hours</TableHead>
                 <TableHead>Status</TableHead>
               </TableRow>
@@ -212,9 +222,18 @@ export default function AdminAttendance({ viewMode: initialViewMode }: AdminAtte
                       ? format(new Date(record.check_out_time), 'hh:mm:ss a')
                       : '-'}
                   </TableCell>
-                  <TableCell className="font-mono text-sm">
-                    {record.check_in_ip || '-'}
-                  </TableCell>
+                  {!isEmployee && (
+                    <>
+                      <TableCell className="font-mono text-sm">
+                        {record.check_in_ip || '-'}
+                      </TableCell>
+                      <TableCell className="font-mono text-sm">
+                        {record.check_out_ip || '-'}
+                      </TableCell>
+                    </>
+                  )}
+
+
                   <TableCell className="font-mono">
                     {formatWorkingHours(record.check_in_time, record.check_out_time, record.total_hours)}
                   </TableCell>
@@ -223,7 +242,7 @@ export default function AdminAttendance({ viewMode: initialViewMode }: AdminAtte
               ))}
               {filteredAttendance.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center text-muted-foreground">
+                  <TableCell colSpan={isEmployee ? 6 : 8} className="text-center text-muted-foreground">
                     No attendance records for this date
                   </TableCell>
                 </TableRow>

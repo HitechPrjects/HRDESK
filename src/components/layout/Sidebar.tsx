@@ -32,10 +32,10 @@ interface SidebarItem {
 
 interface SidebarProps {
   items: SidebarItem[];
-  title: string;
+  header:React.ReactNode;
 }
 
-export function Sidebar({ items, title }: SidebarProps) {
+export function Sidebar({ items, header }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
@@ -44,6 +44,7 @@ export function Sidebar({ items, title }: SidebarProps) {
   const handleSignOut = async () => {
     await signOut();
   };
+
 
   return (
     <>
@@ -76,13 +77,11 @@ export function Sidebar({ items, title }: SidebarProps) {
         <div className="flex h-full flex-col">
           {/* Header */}
           <div className="flex h-16 items-center justify-between border-b border-sidebar-border px-4">
-            {!collapsed && (
-              <h1 className="text-lg font-bold text-sidebar-foreground">{title}</h1>
-            )}
+            {!collapsed && header}
             <Button
               variant="ghost"
               size="icon"
-              className="hidden md:flex text-sidebar-foreground hover:bg-sidebar-accent"
+              className="flex md:hidden text-sidebar-foreground hover:bg-sidebar-accent"
               onClick={() => setCollapsed(!collapsed)}
             >
               <ChevronLeft
