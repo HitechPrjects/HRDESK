@@ -26,33 +26,88 @@ export function CheckInOutButton() {
   const [entries, setEntries] = useState<TimesheetEntry[]>(
     Array(10).fill({ from_time: '', to_time: '', description: '' })
   );
+  const [isCompletedToday, setIsCompletedToday] = useState(false);
+
 
   useEffect(() => {
     checkTodayAttendance();
   }, [authUser]);
 
+  useEffect(() => {
+    const scheduleMidnightReset = () => {
+      const now = new Date();
+      const nextMidnight = new Date();
+      nextMidnight.setHours(24, 0, 0, 0);
+
+      const msUntilMidnight = nextMidnight.getTime() - now.getTime();
+
+      return setTimeout(async () => {
+        setIsCheckedIn(false);
+        setCheckInTime(null);
+        setAttendanceId(null);
+        setIsCompletedToday(false);
+
+        await checkTodayAttendance();
+
+        // schedule again for next day
+        scheduleMidnightReset();
+      }, msUntilMidnight);
+    };
+
+    const timeout = scheduleMidnightReset();
+      return () => clearTimeout(timeout);
+    }, []);
+
+    useEffect(() => {
+    const onFocus = () => {
+      checkTodayAttendance();
+    };
+
+    window.addEventListener('focus', onFocus);
+    return () => window.removeEventListener('focus', onFocus);
+  }, []);
+
+
+
+
   const checkTodayAttendance = async () => {
     if (!authUser?.profileId) return;
 
     const today = format(new Date(), 'yyyy-MM-dd');
-    const { data } = await supabase
+
+    const { data, error } = await supabase
       .from('attendance')
       .select('id, check_in_time, check_out_time')
       .eq('profile_id', authUser.profileId)
       .eq('attendance_date', today)
-      .single();
+      .maybeSingle();
 
-    if (data) {
-      setAttendanceId(data.id);
-      if (data.check_in_time && !data.check_out_time) {
-        setIsCheckedIn(true);
-        setCheckInTime(data.check_in_time);
-      } else if (data.check_out_time) {
-        setIsCheckedIn(false);
-        setCheckInTime(null);
-      }
+    if (error) {
+      console.error(error);
+      return;
+    }
+
+    if (!data) {
+      // no attendance today → reset UI
+      setIsCheckedIn(false);
+      setCheckInTime(null);
+      setAttendanceId(null);
+      setIsCompletedToday(false);
+      return;
+    }
+
+    setAttendanceId(data.id);
+
+    if (data.check_in_time && !data.check_out_time) {
+      setIsCheckedIn(true);
+      setCheckInTime(data.check_in_time);
+    } else if (data.check_out_time) {
+      setIsCheckedIn(false);
+      setCheckInTime(null);
+      setIsCompletedToday(true);
     }
   };
+
 
   const getIpAddress = async () => {
     try {
@@ -66,7 +121,17 @@ export function CheckInOutButton() {
 
   const handleCheckIn = async () => {
     if (!authUser?.profileId) return;
+    if (attendanceId && !isCompletedToday) {
+      toast({
+        title: 'Already Checked In',
+        description: 'You have already checked in today.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setLoading(true);
+
 
     try {
       const ip = await getIpAddress();
@@ -83,9 +148,10 @@ export function CheckInOutButton() {
           status: 'present',
         })
         .select()
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
+      if (!data) throw new Error('Attendance insert failed');
 
       setAttendanceId(data.id);
       setIsCheckedIn(true);
@@ -168,9 +234,10 @@ export function CheckInOutButton() {
           total_hours: totalHours,
         })
         .select()
-        .single();
+        .maybeSingle();
 
       if (timesheetError) throw timesheetError;
+      if (!timesheet) throw new Error('Timesheet insert failed');
 
       // Create timesheet entries
       const validEntries = entries
@@ -194,6 +261,7 @@ export function CheckInOutButton() {
 
       setIsCheckedIn(false);
       setCheckInTime(null);
+      setIsCompletedToday(true)
       setShowTimesheetDialog(false);
       setEntries(Array(10).fill({ from_time: '', to_time: '', description: '' }));
 
@@ -214,30 +282,47 @@ export function CheckInOutButton() {
 
   const calculateHours = (from: string, to: string) => {
     try {
-      const [fromHours, fromMinutes] = from.split(':').map(Number);
-      const [toHours, toMinutes] = to.split(':').map(Number);
-      const fromTotal = fromHours + fromMinutes / 60;
-      const toTotal = toHours + toMinutes / 60;
-      return toTotal - fromTotal;
+      const [fh, fm] = from.split(':').map(Number);
+      const [th, tm] = to.split(':').map(Number);
+
+      const fromDate = new Date();
+      fromDate.setHours(fh, fm, 0, 0); 
+
+      const toDate = new Date();
+      toDate.setHours(th, tm, 0, 0);    
+      // handle crossing midnight
+      if (toDate <= fromDate) {
+        toDate.setDate(toDate.getDate() + 1);
+      }
+
+      const diff = (toDate.getTime() - fromDate.getTime()) / (1000 * 60 * 60);
+
+      // prevent tiny negative floating errors
+      return Math.max(0, Number(diff.toFixed(4)));
     } catch {
       return 0;
     }
   };
 
+
   return (
     <>
-      {isCheckedIn ? (
-        <Button 
-          onClick={handleCheckOutClick} 
+      {isCompletedToday ? (
+        <Button disabled className="bg-gray-400 cursor-not-allowed">
+          Check-IN / Check-OUT Successfully
+        </Button>
+      ) : isCheckedIn ? (
+        <Button
+          onClick={handleCheckOutClick}
           disabled={loading}
           className="bg-red-600 hover:bg-red-700"
         >
           <LogOut className="mr-2 h-4 w-4" />
           Check-OUT
-        </Button>
+        </Button> 
       ) : (
-        <Button 
-          onClick={handleCheckIn} 
+        <Button
+          onClick={handleCheckIn}
           disabled={loading}
           className="bg-green-600 hover:bg-green-700"
         >
@@ -245,6 +330,7 @@ export function CheckInOutButton() {
           Check-IN
         </Button>
       )}
+
 
       <Dialog open={showTimesheetDialog} onOpenChange={setShowTimesheetDialog}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
