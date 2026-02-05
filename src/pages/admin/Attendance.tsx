@@ -4,8 +4,8 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, Search } from 'lucide-react';
-import { format, differenceInSeconds } from 'date-fns';
+import { Search } from 'lucide-react';
+import { format, differenceInSeconds, subDays } from 'date-fns';
 import { useAuth } from '@/contexts/AuthContext';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
@@ -34,7 +34,11 @@ export default function AdminAttendance({ viewMode: initialViewMode }: AdminAtte
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [dateFilter, setDateFilter] = useState(format(new Date(), 'yyyy-MM-dd'));
+
+  // Default: last 30 days
+  const [fromDate, setFromDate] = useState(format(subDays(new Date(), 29), 'yyyy-MM-dd'));
+  const [toDate, setToDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+
   const [viewMode, setViewMode] = useState<'all' | 'my' | 'employees'>(initialViewMode || 'all');
   const [currentTime, setCurrentTime] = useState(new Date());
 
@@ -42,7 +46,7 @@ export default function AdminAttendance({ viewMode: initialViewMode }: AdminAtte
   const isHR = authUser?.role === 'hr';
   const isEmployee = authUser?.role === 'employee';
 
-  // Update current time every second for live hours calculation
+  // Live timer
   useEffect(() => {
     const interval = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(interval);
@@ -50,12 +54,12 @@ export default function AdminAttendance({ viewMode: initialViewMode }: AdminAtte
 
   useEffect(() => {
     fetchAttendance();
-  }, [dateFilter, viewMode, authUser]);
+  }, [fromDate, toDate, viewMode, authUser]);
 
   const fetchAttendance = async () => {
     if (!authUser) return;
     setLoading(true);
-    
+
     try {
       let query = supabase
         .from('attendance')
@@ -70,23 +74,24 @@ export default function AdminAttendance({ viewMode: initialViewMode }: AdminAtte
           status,
           profiles:profile_id(first_name, last_name, email)
         `)
-
-        .eq('attendance_date', dateFilter)
+        .gte('attendance_date', fromDate)
+        .lte('attendance_date', toDate)
+        .order('attendance_date', { ascending: false })
         .order('check_in_time', { ascending: false });
 
-      // For employee, always show only their own
+      // Employee → only own records
       if (isEmployee || viewMode === 'my') {
         query = query.eq('profile_id', authUser.profileId);
       }
 
       const { data, error } = await query;
-
       if (error) throw error;
 
-      const formatted = data?.map(a => ({
-        ...a,
-        profile: a.profiles as any,
-      })) || [];
+      const formatted =
+        data?.map((a) => ({
+          ...a,
+          profile: a.profiles as any,
+        })) || [];
 
       setAttendance(formatted);
     } catch (error) {
@@ -96,7 +101,7 @@ export default function AdminAttendance({ viewMode: initialViewMode }: AdminAtte
     }
   };
 
-  const filteredAttendance = attendance.filter(a =>
+  const filteredAttendance = attendance.filter((a) =>
     `${a.profile?.first_name} ${a.profile?.last_name} ${a.profile?.email}`
       .toLowerCase()
       .includes(search.toLowerCase())
@@ -117,21 +122,27 @@ export default function AdminAttendance({ viewMode: initialViewMode }: AdminAtte
     }
   };
 
-  const formatWorkingHours = (checkIn: string | null, checkOut: string | null, storedHours: number | null) => {
+  const formatWorkingHours = (
+    checkIn: string | null,
+    checkOut: string | null,
+    storedHours: number | null
+  ) => {
     if (checkOut && storedHours) {
-      // Completed day - show stored hours
       const hours = Math.floor(storedHours);
       const minutes = Math.floor((storedHours - hours) * 60);
       const seconds = Math.floor(((storedHours - hours) * 60 - minutes) * 60);
-      return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+      return `${hours.toString().padStart(2, '0')}:${minutes
+        .toString()
+        .padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
     } else if (checkIn && !checkOut) {
-      // Still working - calculate live
       const checkInDate = new Date(checkIn);
       const diff = differenceInSeconds(currentTime, checkInDate);
       const hours = Math.floor(diff / 3600);
       const minutes = Math.floor((diff % 3600) / 60);
       const seconds = diff % 60;
-      return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+      return `${hours.toString().padStart(2, '0')}:${minutes
+        .toString()
+        .padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
     }
     return '-';
   };
@@ -157,7 +168,6 @@ export default function AdminAttendance({ viewMode: initialViewMode }: AdminAtte
         <CardHeader>
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div className="flex items-center gap-4 flex-1">
-              {/* View mode dropdown for HR */}
               {isHR && (
                 <Select value={viewMode} onValueChange={(v) => setViewMode(v as any)}>
                   <SelectTrigger className="w-[180px]">
@@ -169,7 +179,7 @@ export default function AdminAttendance({ viewMode: initialViewMode }: AdminAtte
                   </SelectContent>
                 </Select>
               )}
-              
+
               <div className="relative flex-1 max-w-sm">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
@@ -180,17 +190,16 @@ export default function AdminAttendance({ viewMode: initialViewMode }: AdminAtte
                 />
               </div>
             </div>
+
+            {/* Date range filter */}
             <div className="flex items-center gap-2">
-              <Calendar className="h-4 w-4 text-muted-foreground" />
-              <Input
-                type="date"
-                value={dateFilter}
-                onChange={(e) => setDateFilter(e.target.value)}
-                className="w-auto"
-              />
+              <Input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
+              <span className="text-sm text-muted-foreground">to</span>
+              <Input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} />
             </div>
           </div>
         </CardHeader>
+
         <CardContent>
           <Table>
             <TableHeader>
@@ -205,6 +214,7 @@ export default function AdminAttendance({ viewMode: initialViewMode }: AdminAtte
                 <TableHead>Status</TableHead>
               </TableRow>
             </TableHeader>
+
             <TableBody>
               {filteredAttendance.map((record) => (
                 <TableRow key={record.id}>
@@ -222,17 +232,13 @@ export default function AdminAttendance({ viewMode: initialViewMode }: AdminAtte
                       ? format(new Date(record.check_out_time), 'hh:mm:ss a')
                       : '-'}
                   </TableCell>
+
                   {!isEmployee && (
                     <>
-                      <TableCell className="font-mono text-sm">
-                        {record.check_in_ip || '-'}
-                      </TableCell>
-                      <TableCell className="font-mono text-sm">
-                        {record.check_out_ip || '-'}
-                      </TableCell>
+                      <TableCell className="font-mono text-sm">{record.check_in_ip || '-'}</TableCell>
+                      <TableCell className="font-mono text-sm">{record.check_out_ip || '-'}</TableCell>
                     </>
                   )}
-
 
                   <TableCell className="font-mono">
                     {formatWorkingHours(record.check_in_time, record.check_out_time, record.total_hours)}
@@ -240,10 +246,11 @@ export default function AdminAttendance({ viewMode: initialViewMode }: AdminAtte
                   <TableCell>{getStatusBadge(record.status)}</TableCell>
                 </TableRow>
               ))}
+
               {filteredAttendance.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={isEmployee ? 6 : 8} className="text-center text-muted-foreground">
-                    No attendance records for this date
+                    No attendance records in selected date range
                   </TableCell>
                 </TableRow>
               )}

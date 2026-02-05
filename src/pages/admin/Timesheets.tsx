@@ -3,19 +3,20 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Calendar, Search, Eye } from 'lucide-react';
+import { Search, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { format } from 'date-fns';
+import { format, subDays } from 'date-fns';
 import { useAuth } from '@/contexts/AuthContext';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
-interface TimesheetEmployee {
+interface TimesheetRow {
   id: string;
+  profile_id: string;
   first_name: string;
   last_name: string;
   email: string;
-  role: string;
+  timesheet_date: string;
 }
 
 interface TimesheetEntry {
@@ -33,93 +34,85 @@ interface AdminTimesheetsProps {
 
 export default function AdminTimesheets({ viewMode: initialViewMode }: AdminTimesheetsProps) {
   const { authUser } = useAuth();
-  const [employees, setEmployees] = useState<TimesheetEmployee[]>([]);
+
+  const [rows, setRows] = useState<TimesheetRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [dateFilter, setDateFilter] = useState(format(new Date(), 'yyyy-MM-dd'));
-  const [selectedEmployee, setSelectedEmployee] = useState<TimesheetEmployee | null>(null);
+
+  // last 30 days default
+  const [fromDate, setFromDate] = useState(format(subDays(new Date(), 29), 'yyyy-MM-dd'));
+  const [toDate, setToDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+
+  const [selectedRow, setSelectedRow] = useState<TimesheetRow | null>(null);
   const [entries, setEntries] = useState<TimesheetEntry[]>([]);
-  const [timesheetDialogOpen, setTimesheetDialogOpen] = useState(false);
+  const [open, setOpen] = useState(false);
+
   const [viewMode, setViewMode] = useState<'all' | 'my' | 'employees'>(initialViewMode || 'all');
 
-  const isAdmin = authUser?.role === 'admin';
   const isHR = authUser?.role === 'hr';
   const isEmployee = authUser?.role === 'employee';
 
   useEffect(() => {
-    fetchEmployees();
-  }, [viewMode, authUser]);
+    fetchTimesheets();
+  }, [authUser, fromDate, toDate, viewMode]);
 
-  const fetchEmployees = async () => {
+  const fetchTimesheets = async () => {
     if (!authUser) return;
-    
+    setLoading(true);
+
     try {
-      // For employees, show only their own
+      let query = supabase
+        .from('timesheets')
+        .select(`
+          id,
+          profile_id,
+          timesheet_date,
+          profiles:profile_id(first_name, last_name, email)
+        `)
+        .gte('timesheet_date', fromDate)
+        .lte('timesheet_date', toDate)
+        .order('timesheet_date', { ascending: false });
+
       if (isEmployee || viewMode === 'my') {
-        const { data } = await supabase
-          .from('profiles')
-          .select('id, first_name, last_name, email')
-          .eq('id', authUser.profileId)
-          .single();
+        query = query.eq('profile_id', authUser.profileId);
+      }
 
-        setEmployees(data ? [{ ...data, role: authUser.role }] : []);
-      } else {
-        // For admin/HR, get all employees except admin
-        const { data: profiles } = await supabase
-          .from('profiles')
-          .select('id, first_name, last_name, email, user_id')
-          .eq('employment_status', 'active')
-          .order('first_name');
+      const { data, error } = await query;
+      if (error) throw error;
 
-        const { data: roles } = await supabase
-          .from('user_roles')
-          .select('user_id, role');
-
-        const employeesWithRoles = profiles?.map(p => ({
-          ...p,
-          role: roles?.find(r => r.user_id === p.user_id)?.role || 'employee',
+      const mapped: TimesheetRow[] =
+        data?.map((t: any) => ({
+          id: t.id,
+          profile_id: t.profile_id,
+          timesheet_date: t.timesheet_date,
+          first_name: t.profiles.first_name,
+          last_name: t.profiles.last_name,
+          email: t.profiles.email,
         })) || [];
 
-        // Admin view: exclude admin timesheets
-        // HR view: show HR and employees
-        const filtered = employeesWithRoles.filter(e => e.role !== 'admin');
-        setEmployees(filtered);
-      }
-    } catch (error) {
-      console.error('Error fetching employees:', error);
+      setRows(mapped);
+    } catch (err) {
+      console.error('fetchTimesheets error', err);
     } finally {
       setLoading(false);
     }
   };
 
-  const viewTimesheet = async (employee: TimesheetEmployee) => {
-    setSelectedEmployee(employee);
-    setTimesheetDialogOpen(true);
+  const viewTimesheet = async (row: TimesheetRow) => {
+    setSelectedRow(row);
+    setOpen(true);
 
-    const { data: timesheet } = await supabase
-      .from('timesheets')
-      .select('id')
-      .eq('profile_id', employee.id)
-      .eq('timesheet_date', dateFilter)
-      .single();
+    const { data } = await supabase
+      .from('timesheet_entries')
+      .select('*')
+      .eq('timesheet_id', row.id)
+      .order('entry_number');
 
-    if (timesheet) {
-      const { data: entriesData } = await supabase
-        .from('timesheet_entries')
-        .select('*')
-        .eq('timesheet_id', timesheet.id)
-        .order('entry_number');
-
-      setEntries(entriesData || []);
-    } else {
-      setEntries([]);
-    }
+    setEntries(data || []);
   };
 
-  const filteredEmployees = employees.filter(e =>
-    `${e.first_name} ${e.last_name} ${e.email}`
-      .toLowerCase()
-      .includes(search.toLowerCase())
+  const filtered = rows.filter((r) =>
+    `${r.first_name} ${r.last_name} ${r.email}`.toLowerCase().includes(search.toLowerCase())
   );
 
   if (loading) {
@@ -143,7 +136,6 @@ export default function AdminTimesheets({ viewMode: initialViewMode }: AdminTime
         <CardHeader>
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div className="flex items-center gap-4 flex-1">
-              {/* View mode dropdown for HR */}
               {isHR && (
                 <Select value={viewMode} onValueChange={(v) => setViewMode(v as any)}>
                   <SelectTrigger className="w-[180px]">
@@ -158,57 +150,47 @@ export default function AdminTimesheets({ viewMode: initialViewMode }: AdminTime
 
               <div className="relative flex-1 max-w-sm">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  placeholder="Search employees..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="pl-10"
-                />
+                <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search employees..." className="pl-10" />
               </div>
             </div>
+
             <div className="flex items-center gap-2">
-              <Calendar className="h-4 w-4 text-muted-foreground" />
-              <Input
-                type="date"
-                value={dateFilter}
-                onChange={(e) => setDateFilter(e.target.value)}
-                className="w-auto"
-              />
+              <Input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
+              <span className="text-sm text-muted-foreground">to</span>
+              <Input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} />
             </div>
           </div>
         </CardHeader>
+
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Employee</TableHead>
                 <TableHead>Email</TableHead>
+                <TableHead>Date</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
+
             <TableBody>
-              {filteredEmployees.map((employee) => (
-                <TableRow key={employee.id}>
-                  <TableCell className="font-medium">
-                    {employee.first_name} {employee.last_name}
-                  </TableCell>
-                  <TableCell>{employee.email}</TableCell>
+              {filtered.map((r) => (
+                <TableRow key={r.id}>
+                  <TableCell className="font-medium">{r.first_name} {r.last_name}</TableCell>
+                  <TableCell>{r.email}</TableCell>
+                  <TableCell>{format(new Date(r.timesheet_date), 'MMM d, yyyy')}</TableCell>
                   <TableCell className="text-right">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => viewTimesheet(employee)}
-                    >
-                      <Eye className="mr-2 h-4 w-4" />
-                      View Timesheet
+                    <Button size="sm" variant="ghost" onClick={() => viewTimesheet(r)}>
+                      <Eye className="mr-2 h-4 w-4" /> View Timesheet
                     </Button>
                   </TableCell>
                 </TableRow>
               ))}
-              {filteredEmployees.length === 0 && (
+
+              {filtered.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={3} className="text-center text-muted-foreground">
-                    No employees found
+                  <TableCell colSpan={4} className="text-center text-muted-foreground">
+                    No timesheets in selected date range
                   </TableCell>
                 </TableRow>
               )}
@@ -217,21 +199,20 @@ export default function AdminTimesheets({ viewMode: initialViewMode }: AdminTime
         </CardContent>
       </Card>
 
-      <Dialog open={timesheetDialogOpen} onOpenChange={setTimesheetDialogOpen}>
+      <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>
-              Timesheet - {selectedEmployee?.first_name} {selectedEmployee?.last_name}
+              Timesheet - {selectedRow?.first_name} {selectedRow?.last_name}
             </DialogTitle>
           </DialogHeader>
+
           <p className="text-sm text-muted-foreground">
-            Date: {format(new Date(dateFilter), 'MMMM d, yyyy')}
+            Date: {selectedRow && format(new Date(selectedRow.timesheet_date), 'MMMM d, yyyy')}
           </p>
 
           {entries.length === 0 ? (
-            <p className="text-center py-8 text-muted-foreground">
-              No timesheet entries for this date
-            </p>
+            <p className="text-center py-8 text-muted-foreground">No timesheet entries for this date</p>
           ) : (
             <Table>
               <TableHeader>
@@ -244,13 +225,13 @@ export default function AdminTimesheets({ viewMode: initialViewMode }: AdminTime
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {entries.map((entry) => (
-                  <TableRow key={entry.id}>
-                    <TableCell>{entry.entry_number}</TableCell>
-                    <TableCell>{entry.from_time || '-'}</TableCell>
-                    <TableCell>{entry.to_time || '-'}</TableCell>
-                    <TableCell>{entry.hours?.toFixed(2) || '-'}</TableCell>
-                    <TableCell>{entry.description || '-'}</TableCell>
+                {entries.map((e) => (
+                  <TableRow key={e.id}>
+                    <TableCell>{e.entry_number}</TableCell>
+                    <TableCell>{e.from_time || '-'}</TableCell>
+                    <TableCell>{e.to_time || '-'}</TableCell>
+                    <TableCell>{e.hours?.toFixed(2) || '-'}</TableCell>
+                    <TableCell>{e.description || '-'}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
