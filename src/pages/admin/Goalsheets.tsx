@@ -82,9 +82,19 @@ export default function AdminGoalsheets({ viewMode: initialViewMode }: AdminGoal
         `)
         .order('created_at', { ascending: false });
 
-      if (isEmployee || viewMode === 'my') {
-        query = query.eq('profile_id', authUser.profileId);
+      if (viewMode === 'my') {
+        if (isEmployee) {
+          // Employee → own goalsheets
+          query = query.eq('profile_id', authUser.profileId);
+        } else if (isHR) {
+          // HR / Manager → team goalsheets
+          query = query.eq('reporting_manager_id', authUser.profileId);
+        } else if (isAdmin) {
+          // Admin → show ALL goalsheets (do nothing)
+        }
       }
+
+
 
       if (fromDate) {
         query = query.gte('created_at', fromDate);
@@ -204,8 +214,13 @@ export default function AdminGoalsheets({ viewMode: initialViewMode }: AdminGoal
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">
-            {viewMode === 'my' ? 'My Goalsheet Details' : 'Employee Goalsheet Details'}
+            {viewMode === 'my'
+              ? isHR
+                ? 'My Team Goalsheets'
+                : 'My Goalsheet Details'
+              : 'Employee Goalsheet Details'}
           </h1>
+
         </div>
       </div>
 
@@ -252,7 +267,7 @@ export default function AdminGoalsheets({ viewMode: initialViewMode }: AdminGoal
               <RefreshCw className="mr-2 h-4 w-4" />
               Refresh
             </Button>
-            {(isHR || isAdmin) && (
+            {(isHR) && (
               <Button 
                 variant={viewMode === 'my' ? 'default' : 'outline'}
                 onClick={() => setViewMode(viewMode === 'my' ? 'all' : 'my')}

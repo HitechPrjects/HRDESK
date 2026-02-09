@@ -6,6 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Goalsheet, GoalItem, TargetType } from './types';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface WeekEntryDialogProps {
   open: boolean;
@@ -17,59 +18,79 @@ interface WeekEntryDialogProps {
   onSuccess: () => void;
 }
 
-export function WeekEntryDialog({ 
-  open, 
-  onOpenChange, 
+export function WeekEntryDialog({
+  open,
+  onOpenChange,
   goalsheet,
   goalItems,
   targetTypes,
   week,
-  onSuccess
+  onSuccess,
 }: WeekEntryDialogProps) {
   const { toast } = useToast();
+  const { authUser } = useAuth();
+
   const [loading, setLoading] = useState(false);
+  const [isEditing, setIsEditing] = useState(false); // 🔹 edit mode
   const [entries, setEntries] = useState<Record<string, string>>({});
   const [outOfBoxEntries, setOutOfBoxEntries] = useState<Record<string, string>>({});
 
   const weekKey = `week${week}_value` as keyof GoalItem;
   const weekSubmittedKey = `week${week}_submitted` as keyof GoalItem;
 
+  /** ---------------- ROLE CHECK ---------------- */
+  const isAdmin = authUser?.role === 'admin';
+  const isHR = authUser?.role === 'hr';
+  const isEmployee = authUser?.role === 'employee';
+
+  const canEditRole = isAdmin || isHR;
+
+  /** ---------------- SUBMIT STATE ---------------- */
+  const isSubmitted =
+    goalItems.length > 0 && goalItems.every((item) => item[weekSubmittedKey]);
+
+  /** ---------------- DISABLE INPUT ---------------- */
+  const disableEditing = isEmployee || !isEditing;
+
+  const isWeek4 = week === 4;
+
+  /** ---------------- INITIAL LOAD ---------------- */
   useEffect(() => {
     if (open && goalItems.length > 0) {
       const initialEntries: Record<string, string> = {};
       const initialOutOfBox: Record<string, string> = {};
-      goalItems.forEach(item => {
+
+      goalItems.forEach((item) => {
         initialEntries[item.id] = (item[weekKey] as string) || '';
         initialOutOfBox[item.id] = item.out_of_box || '';
       });
+
       setEntries(initialEntries);
       setOutOfBoxEntries(initialOutOfBox);
+      setIsEditing(false); // reset edit mode when dialog opens
     }
   }, [open, goalItems, weekKey]);
 
   if (!goalsheet) return null;
 
+  /** ---------------- HELPERS ---------------- */
   const getTargetName = (targetTypeId: string | null) => {
     if (!targetTypeId) return '-';
-    const target = targetTypes.find(t => t.id === targetTypeId);
+    const target = targetTypes.find((t) => t.id === targetTypeId);
     return target?.name || '-';
   };
 
-  const isSubmitted = goalItems.length > 0 && goalItems.every(item => item[weekSubmittedKey]);
-
-  const isWeek4 = week === 4;
-
+  /** ---------------- SUBMIT ---------------- */
   const handleSubmit = async () => {
     setLoading(true);
+
     try {
-      // Update each goal item with the week value
       for (const item of goalItems) {
         const updateData: Record<string, any> = {
           [weekKey]: entries[item.id] || null,
           [weekSubmittedKey]: true,
         };
 
-        // If it's week 4, also save out_of_box
         if (isWeek4) {
           updateData.out_of_box = outOfBoxEntries[item.id] || null;
         }
@@ -82,7 +103,6 @@ export function WeekEntryDialog({
         if (error) throw error;
       }
 
-      // Update goalsheet status
       await supabase
         .from('goalsheets')
         .update({ status: 'in_progress' })
@@ -90,7 +110,7 @@ export function WeekEntryDialog({
 
       toast({
         title: 'Success',
-        description: `Week ${week} entries submitted successfully`,
+        description: `Week ${week} entries updated successfully`,
       });
 
       onSuccess();
@@ -106,6 +126,7 @@ export function WeekEntryDialog({
     }
   };
 
+  /** ---------------- UI ---------------- */
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -115,7 +136,8 @@ export function WeekEntryDialog({
 
         <div className="space-y-6 py-4">
           <p className="text-sm text-muted-foreground">
-            {goalsheet.profile?.first_name} {goalsheet.profile?.last_name} - {goalsheet.title}
+            {goalsheet.profile?.first_name} {goalsheet.profile?.last_name} -{' '}
+            {goalsheet.title}
           </p>
 
           {goalItems.map((item) => (
@@ -123,24 +145,37 @@ export function WeekEntryDialog({
               <Label className="font-semibold">
                 {getTargetName(item.target_type_id)}
               </Label>
+
               <p className="text-sm text-muted-foreground">{item.title}</p>
+
               <Textarea
                 value={entries[item.id] || ''}
-                onChange={(e) => setEntries(prev => ({ ...prev, [item.id]: e.target.value }))}
-                placeholder={`Enter your progress for week ${week}...`}
+                onChange={(e) =>
+                  setEntries((prev) => ({
+                    ...prev,
+                    [item.id]: e.target.value,
+                  }))
+                }
                 rows={3}
-                disabled={isSubmitted}
+                disabled={disableEditing}
               />
-              
+
               {isWeek4 && (
                 <div className="mt-3">
-                  <Label className="font-semibold text-purple-700">Out of Box</Label>
+                  <Label className="font-semibold text-purple-700">
+                    Out of Box
+                  </Label>
+
                   <Textarea
                     value={outOfBoxEntries[item.id] || ''}
-                    onChange={(e) => setOutOfBoxEntries(prev => ({ ...prev, [item.id]: e.target.value }))}
-                    placeholder="Enter any additional activities or achievements outside regular goals..."
+                    onChange={(e) =>
+                      setOutOfBoxEntries((prev) => ({
+                        ...prev,
+                        [item.id]: e.target.value,
+                      }))
+                    }
                     rows={2}
-                    disabled={isSubmitted}
+                    disabled={disableEditing}
                     className="mt-1"
                   />
                 </div>
@@ -149,22 +184,35 @@ export function WeekEntryDialog({
           ))}
 
           {goalItems.length === 0 && (
-            <p className="text-center text-muted-foreground">No goal items found</p>
+            <p className="text-center text-muted-foreground">
+              No goal items found
+            </p>
           )}
 
-          <div className="flex justify-end gap-2">
+          {/* ---------------- BUTTONS ---------------- */}
+          <div className="flex justify-end gap-2 items-center">
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            {!isSubmitted && (
-              <Button onClick={handleSubmit} disabled={loading}>
-                {loading ? 'Submitting...' : 'Submit'}
-              </Button>
+
+            {/* EMPLOYEE → only Already Submitted text */}
+            {isEmployee && isSubmitted && (
+              <p className="text-sm text-green-600">✓ Already submitted</p>
             )}
-            {isSubmitted && (
-              <p className="text-sm text-green-600 flex items-center">
-                ✓ Already submitted
-              </p>
+
+            {/* ADMIN / HR VIEW MODE */}
+            {canEditRole && isSubmitted && !isEditing && (
+              <>
+                <p className="text-sm text-green-600">✓ Already submitted</p>
+                <Button onClick={() => setIsEditing(true)}>Edit</Button>
+              </>
+            )}
+
+            {/* ADMIN / HR EDIT MODE */}
+            {canEditRole && isEditing && (
+              <Button onClick={handleSubmit} disabled={loading}>
+                {loading ? 'Saving...' : 'Save'}
+              </Button>
             )}
           </div>
         </div>
