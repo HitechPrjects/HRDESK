@@ -110,8 +110,9 @@ export default function OngoingTraining() {
         .update({
           name: values.name,
           domain: values.domain,
-          from_date: values.from_date,
-          to_date: values.to_date,
+          from_date: new Date(values.from_date).toISOString(),
+          to_date: new Date(values.to_date).toISOString(),
+
           time_from: values.time_from,
           time_to: values.time_to,
           status: values.status,
@@ -204,11 +205,26 @@ export default function OngoingTraining() {
               if (!open) setEditItem(null);
             }}
           >
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="mr-2 h-4 w-4" /> {editItem ? 'Edit' : 'Add Ongoing'}
-              </Button>
-            </DialogTrigger>
+            <Button
+              onClick={() => {
+                setEditItem(null);          
+
+                form.reset({              
+                  name: '',
+                  domain: '',
+                  from_date: '',
+                  to_date: '',
+                  time_from: '',
+                  time_to: '',
+                  status: 'ongoing',
+                });
+
+                setDialogOpen(true);       
+              }}
+            >
+              <Plus className="mr-2 h-4 w-4" /> Add Ongoing
+            </Button>
+
 
             <DialogContent>
               <DialogHeader>
@@ -389,7 +405,12 @@ export default function OngoingTraining() {
                         variant="outline"
                         onClick={() => {
                           setEditItem(d);
-                          form.reset(d);
+                          form.reset({
+                            ...d,
+                            from_date: d.from_date.split("T")[0],
+                            to_date: d.to_date.split("T")[0],
+                          });
+
                           setDialogOpen(true);
                         }}
                       >

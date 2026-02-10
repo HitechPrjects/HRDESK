@@ -155,11 +155,23 @@ export default function DailyTraining() {
           />
 
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="mr-2 h-4 w-4" /> Add Training
-              </Button>
-            </DialogTrigger>
+            <Button
+              onClick={() => {
+                form.reset({
+                  name: '',
+                  domain: '',
+                  description: '',
+                  time_from: '',
+                  time_to: '',
+                });
+
+                setDialogOpen(true);
+              }}
+            >
+              <Plus className="mr-2 h-4 w-4" /> Add Training
+            </Button>
+
+
 
             <DialogContent>
               <DialogHeader>
