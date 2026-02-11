@@ -20,6 +20,8 @@ import HRDashboard from "@/pages/hr/Dashboard";
 import EmployeeDashboard from "@/pages/employee/Dashboard";
 import DailyTraining from "./components/training/DailyTraining";
 import OngoingTraining from "./components/training/OngoingTraining";
+import TrainingDetailsList from "./components/training/TrainingDetailsList";
+import TrainingUserView from "./components/training/TrainingUserView";
 
 // Configure query client with security settings
 const queryClient = new QueryClient({
@@ -59,6 +61,9 @@ const App = () => (
               <Route path="tasks" element={<AdminTasks />} />
               <Route path="leaves" element={<AdminLeaves />} />
               <Route path="training" element={<AdminTraining />} />
+              <Route path="training/details" element={<TrainingDetailsList />} />
+              <Route path="training/details/:profileId" element={<TrainingUserView />} />
+
               <Route path="goalsheets" element={<AdminGoalsheets />} />
               <Route path="payroll" element={<AdminPayroll />} />
               <Route path="announcements" element={<AdminAnnouncements />} />
@@ -83,7 +88,10 @@ const App = () => (
                 <Route index element={<AdminTraining />} />
                 <Route path="daily" element={<DailyTraining />} />
                 <Route path="ongoing" element={<OngoingTraining />} />
+                <Route path="details" element={<TrainingDetailsList />} />
+                <Route path="details/:profileId" element={<TrainingUserView />} />
               </Route>
+
 
               <Route path="goalsheets" element={<AdminGoalsheets />} />
               <Route path="payroll" element={<AdminPayroll />} />

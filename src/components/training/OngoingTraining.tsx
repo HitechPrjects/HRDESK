@@ -182,7 +182,7 @@ export default function OngoingTraining() {
   /* ================= UI ================= */
 
   return (
-    <div className="space-y-6 mt-5">
+    <div className="space-y-6 mt-4">
       {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">Ongoing Training</h1>
@@ -401,8 +401,10 @@ export default function OngoingTraining() {
                   <TableCell>{format(new Date(d.from_date), 'dd/MM/yyyy')}</TableCell>
                   <TableCell>{format(new Date(d.to_date), 'dd/MM/yyyy')}</TableCell>
                   <TableCell>
-                    {d.time_from} - {d.time_to}
+                    {format(new Date(`1970-01-01T${d.time_from}`), 'hh:mm a')} -{' '}
+                    {format(new Date(`1970-01-01T${d.time_to}`), 'hh:mm a')}
                   </TableCell>
+
                   <TableCell>{d.domain}</TableCell>
                   <TableCell>{getBadge(d.status)}</TableCell>
                   <TableCell>

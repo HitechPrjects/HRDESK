@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
 import { useForm } from 'react-hook-form';
@@ -48,7 +48,10 @@ export default function DailyTraining() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [month, setMonth] = useState(format(new Date(), 'yyyy-MM'));
+  const [fromDate, setFromDate] = useState(format(new Date(), 'yyyy-MM-01'));
+  const [toDate, setToDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+
+
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -67,17 +70,12 @@ export default function DailyTraining() {
     if (!authUser) return;
 
     setLoading(true);
-
-    const start = new Date(`${month}-01`);
-    const end = new Date(start);
-    end.setMonth(end.getMonth() + 1);
-
     const { data, error } = await supabase
       .from('daily_training')
       .select('*')
       .eq('profile_id', authUser.profileId)
-      .gte('date', start.toISOString())
-      .lt('date', end.toISOString())
+      .gte('date', new Date(fromDate).toISOString())
+      .lte('date', new Date(toDate).toISOString())
       .order('date', { ascending: false });
 
     if (error) {
@@ -91,7 +89,7 @@ export default function DailyTraining() {
 
   useEffect(() => {
     fetchData();
-  }, [authUser, month]);
+  }, [authUser, fromDate,toDate]);
 
   /* ================= SUBMIT ================= */
 
@@ -141,18 +139,15 @@ export default function DailyTraining() {
   /* ================= UI ================= */
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 mt-4">
       {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">Daily Training</h1>
 
         <div className="flex gap-2">
-          <Input
-            type="month"
-            value={month}
-            onChange={(e) => setMonth(e.target.value)}
-            className="w-40"
-          />
+          <Input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
+          <Input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} />
+
 
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <Button
@@ -301,8 +296,10 @@ export default function DailyTraining() {
                   <TableCell>{d.description}</TableCell>
                   <TableCell>{format(new Date(d.date), 'dd/MM/yyyy')}</TableCell>
                   <TableCell>
-                    {d.time_from} - {d.time_to}
+                    {format(new Date(`1970-01-01T${d.time_from}`), 'hh:mm a')} -{' '}
+                    {format(new Date(`1970-01-01T${d.time_to}`), 'hh:mm a')}
                   </TableCell>
+
                 </TableRow>
               ))}
 
