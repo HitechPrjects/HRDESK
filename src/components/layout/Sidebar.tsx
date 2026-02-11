@@ -223,11 +223,10 @@ export const adminSidebarItems: SidebarItem[] = [
   { title: 'Leaves', href: '/admin/leaves', icon: <CalendarDays className="h-4 w-4" /> },
 
   {
-    title: 'Training',
-    icon: <GraduationCap className="h-4 w-4" />,
-    children: [{ title: 'Training Details', href: '/admin/training/details', icon: null }],
+    title: 'Training Details',
+    href: '/admin/training/details',
+    icon: <GraduationCap className="h-4 w-4" />
   },
-
   { title: 'Goalsheets', href: '/admin/goalsheets', icon: <Target className="h-4 w-4" /> },
   { title: 'Payroll', href: '/admin/payroll', icon: <DollarSign className="h-4 w-4" /> },
   { title: 'Announcements', href: '/admin/announcements', icon: <Megaphone className="h-4 w-4" /> },
