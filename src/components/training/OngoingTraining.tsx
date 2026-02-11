@@ -54,7 +54,9 @@ export default function OngoingTraining() {
   const [search, setSearch] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editItem, setEditItem] = useState<OngoingTrainingType | null>(null);
-  const [month, setMonth] = useState(format(new Date(), 'yyyy-MM'));
+  const [statusFilter, setStatusFilter] =
+  useState<'ongoing' | 'completed' | 'discontinue'>('ongoing');
+
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -76,17 +78,12 @@ export default function OngoingTraining() {
 
     setLoading(true);
 
-    const start = new Date(`${month}-01`);
-    const end = new Date(start);
-    end.setMonth(end.getMonth() + 1);
-
     const { data, error } = await supabase
       .from('ongoing_training')
       .select('*')
       .eq('profile_id', authUser.profileId)
-      .gte('from_date', start.toISOString())
-      .lt('from_date', end.toISOString())
-      .order('from_date', { ascending: false });
+      .eq('status', statusFilter)
+      .order('from_date', { ascending: false });;
 
     if (error) {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
@@ -99,7 +96,7 @@ export default function OngoingTraining() {
 
   useEffect(() => {
     fetchData();
-  }, [authUser, month]);
+  }, [authUser, statusFilter]);
 
   /* ================= SUBMIT ================= */
 
@@ -185,18 +182,28 @@ export default function OngoingTraining() {
   /* ================= UI ================= */
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 mt-5">
       {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">Ongoing Training</h1>
 
         <div className="flex gap-2">
-          <Input
-            type="month"
-            value={month}
-            onChange={(e) => setMonth(e.target.value)}
-            className="w-40"
-          />
+          <Select
+            value={statusFilter}
+            onValueChange={(v) =>
+              setStatusFilter(v as 'ongoing' | 'completed' | 'discontinue')
+            }
+          >
+            <SelectTrigger className="w-40">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ongoing">Ongoing</SelectItem>
+              <SelectItem value="completed">Completed</SelectItem>
+              <SelectItem value="discontinue">Discontinue</SelectItem>
+            </SelectContent>
+          </Select>
+
 
           <Dialog
             open={dialogOpen}
