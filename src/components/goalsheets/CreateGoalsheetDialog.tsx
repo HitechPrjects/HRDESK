@@ -9,6 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { Employee, TargetType } from './types';
 import { format } from 'date-fns';
+import { MdDeleteOutline } from "react-icons/md";
 
 interface CreateGoalsheetDialogProps {
   open: boolean;
@@ -310,7 +311,7 @@ export function CreateGoalsheetDialog({
                       variant="destructive"
                       onClick={() => removeGoalItem(index)}
                     >
-                      Remove
+                      <MdDeleteOutline />
                     </Button>
                   )}
 
