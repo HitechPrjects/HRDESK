@@ -37,7 +37,7 @@ export function CreateGoalsheetDialog({
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear().toString());
   const [reportingManager, setReportingManager] = useState('');
 
-  const [outOfBoxEnabled, setOutOfBoxEnabled] = useState(false);
+  const [outOfBoxEnabled, setOutOfBoxEnabled] = useState(true);
 
   const [goalItems, setGoalItems] = useState<Array<{ targetTypeId: string; goal: string }>>([
     { targetTypeId: '', goal: '' },
@@ -199,7 +199,7 @@ export function CreateGoalsheetDialog({
     setSelectedEmployee('');
     setSelectedMonth('');
     setReportingManager('');
-    setOutOfBoxEnabled(false);
+    setOutOfBoxEnabled(true);
 
     setGoalItems([
       { targetTypeId: '', goal: '' },
@@ -348,7 +348,7 @@ export function CreateGoalsheetDialog({
               checked={outOfBoxEnabled}
               onCheckedChange={(checked) => setOutOfBoxEnabled(!!checked)}
             />
-            <Label>Add outofbox</Label>
+            <Label>Add out-of-box</Label>
           </div>
 
           <Button type="button" variant="outline" onClick={addGoalItem}>
