@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { Employee, TargetType } from './types';
@@ -36,7 +37,8 @@ export function CreateGoalsheetDialog({
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear().toString());
   const [reportingManager, setReportingManager] = useState('');
 
-  // Default 6 rows
+  const [outOfBoxEnabled, setOutOfBoxEnabled] = useState(false);
+
   const [goalItems, setGoalItems] = useState<Array<{ targetTypeId: string; goal: string }>>([
     { targetTypeId: '', goal: '' },
     { targetTypeId: '', goal: '' },
@@ -97,6 +99,19 @@ export function CreateGoalsheetDialog({
 
     const validItems = goalItems.filter(item => item.targetTypeId && item.goal.trim());
 
+    if (outOfBoxEnabled) {
+      const outOfBoxTarget = targetTypes.find(
+        t => t.name.toLowerCase() === "out of box"
+      );
+
+      if (outOfBoxTarget) {
+        validItems.push({
+          targetTypeId: outOfBoxTarget.id,
+          goal: "Out of box"
+        });
+      }
+    }
+
     if (validItems.length === 0) {
       toast({
         title: 'Error',
@@ -117,7 +132,6 @@ export function CreateGoalsheetDialog({
       const periodEnd = new Date(year, month, 0);
 
       const monthName = months.find(m => m.value === selectedMonth)?.label;
-
       const title = `Goalsheet|${monthName} ${year}`;
 
       const { data: goalsheet, error: goalsheetError } = await supabase
@@ -136,7 +150,9 @@ export function CreateGoalsheetDialog({
         .select()
         .single();
 
-      if (goalsheetError) throw goalsheetError;
+      if (goalsheetError || !goalsheet) {
+        throw new Error(goalsheetError?.message || "Goalsheet creation failed");
+      }
 
       const goalItemsToInsert = validItems.map(item => ({
         goalsheet_id: goalsheet.id,
@@ -151,7 +167,9 @@ export function CreateGoalsheetDialog({
         .from('goal_items')
         .insert(goalItemsToInsert);
 
-      if (itemsError) throw itemsError;
+      if (itemsError) {
+        throw new Error(itemsError.message);
+      }
 
       toast({
         title: 'Success',
@@ -164,9 +182,11 @@ export function CreateGoalsheetDialog({
 
     } catch (error: any) {
 
+      console.error(error);
+
       toast({
-        title: 'Error',
-        description: error.message,
+        title: 'Failed',
+        description: 'Goalsheet not created',
         variant: 'destructive',
       });
 
@@ -179,6 +199,7 @@ export function CreateGoalsheetDialog({
     setSelectedEmployee('');
     setSelectedMonth('');
     setReportingManager('');
+    setOutOfBoxEnabled(false);
 
     setGoalItems([
       { targetTypeId: '', goal: '' },
@@ -321,6 +342,14 @@ export function CreateGoalsheetDialog({
             </div>
 
           ))}
+
+          <div className="flex items-center gap-2">
+            <Checkbox
+              checked={outOfBoxEnabled}
+              onCheckedChange={(checked) => setOutOfBoxEnabled(!!checked)}
+            />
+            <Label>Add outofbox</Label>
+          </div>
 
           <Button type="button" variant="outline" onClick={addGoalItem}>
             + Add Target
