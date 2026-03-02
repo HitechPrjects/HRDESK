@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -13,27 +13,29 @@ import { format } from 'date-fns';
 interface CreateGoalsheetDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSuccess: () => void;
+  onSuccess?: () => void;
   employees: Employee[];
   targetTypes: TargetType[];
 }
 
-export function CreateGoalsheetDialog({ 
-  open, 
-  onOpenChange, 
-  onSuccess, 
+export function CreateGoalsheetDialog({
+  open,
+  onOpenChange,
+  onSuccess,
   employees,
   targetTypes
 }: CreateGoalsheetDialogProps) {
+
   const { authUser } = useAuth();
   const { toast } = useToast();
+
   const [loading, setLoading] = useState(false);
-  const [selectedEmployee, setSelectedEmployee] = useState<string>('');
-  const [selectedMonth, setSelectedMonth] = useState<string>('');
-  const [selectedYear, setSelectedYear] = useState<string>(new Date().getFullYear().toString());
-  const [reportingManager, setReportingManager] = useState<string>('');
-  
-  // Goal items - target and goal pairs
+  const [selectedEmployee, setSelectedEmployee] = useState('');
+  const [selectedMonth, setSelectedMonth] = useState('');
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear().toString());
+  const [reportingManager, setReportingManager] = useState('');
+
+  // Default 6 rows
   const [goalItems, setGoalItems] = useState<Array<{ targetTypeId: string; goal: string }>>([
     { targetTypeId: '', goal: '' },
     { targetTypeId: '', goal: '' },
@@ -73,7 +75,16 @@ export function CreateGoalsheetDialog({
     });
   };
 
+  const addGoalItem = () => {
+    setGoalItems(prev => [...prev, { targetTypeId: '', goal: '' }]);
+  };
+
+  const removeGoalItem = (index: number) => {
+    setGoalItems(prev => prev.filter((_, i) => i !== index));
+  };
+
   const handleSubmit = async () => {
+
     if (!selectedEmployee || !selectedMonth || !selectedYear) {
       toast({
         title: 'Error',
@@ -84,6 +95,7 @@ export function CreateGoalsheetDialog({
     }
 
     const validItems = goalItems.filter(item => item.targetTypeId && item.goal.trim());
+
     if (validItems.length === 0) {
       toast({
         title: 'Error',
@@ -94,16 +106,19 @@ export function CreateGoalsheetDialog({
     }
 
     setLoading(true);
+
     try {
+
       const month = parseInt(selectedMonth);
       const year = parseInt(selectedYear);
+
       const periodStart = new Date(year, month - 1, 1);
       const periodEnd = new Date(year, month, 0);
 
       const monthName = months.find(m => m.value === selectedMonth)?.label;
+
       const title = `Goalsheet|${monthName} ${year}`;
 
-      // Create goalsheet
       const { data: goalsheet, error: goalsheetError } = await supabase
         .from('goalsheets')
         .insert({
@@ -122,7 +137,6 @@ export function CreateGoalsheetDialog({
 
       if (goalsheetError) throw goalsheetError;
 
-      // Create goal items
       const goalItemsToInsert = validItems.map(item => ({
         goalsheet_id: goalsheet.id,
         target_type_id: item.targetTypeId,
@@ -143,15 +157,18 @@ export function CreateGoalsheetDialog({
         description: 'Goalsheet created successfully',
       });
 
-      onSuccess();
+      onSuccess?.();
       onOpenChange(false);
       resetForm();
+
     } catch (error: any) {
+
       toast({
         title: 'Error',
         description: error.message,
         variant: 'destructive',
       });
+
     } finally {
       setLoading(false);
     }
@@ -161,6 +178,7 @@ export function CreateGoalsheetDialog({
     setSelectedEmployee('');
     setSelectedMonth('');
     setReportingManager('');
+
     setGoalItems([
       { targetTypeId: '', goal: '' },
       { targetTypeId: '', goal: '' },
@@ -174,12 +192,15 @@ export function CreateGoalsheetDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+
         <DialogHeader>
           <DialogTitle>Select the target and fill in the goalsheet for each individual</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-6">
+
           <div className="grid grid-cols-2 gap-4">
+
             <div className="space-y-2">
               <Label>User Name*</Label>
               <Select value={selectedEmployee} onValueChange={setSelectedEmployee}>
@@ -198,15 +219,17 @@ export function CreateGoalsheetDialog({
 
             <div className="space-y-2">
               <Label>Employee ID</Label>
-              <Input 
-                value={selectedEmployeeData?.employee_id || ''} 
-                disabled 
+              <Input
+                value={selectedEmployeeData?.employee_id || ''}
+                disabled
                 className="bg-muted"
               />
             </div>
+
           </div>
 
           <div className="grid grid-cols-3 gap-4">
+
             <div className="space-y-2">
               <Label>Month*</Label>
               <Select value={selectedMonth} onValueChange={setSelectedMonth}>
@@ -247,57 +270,75 @@ export function CreateGoalsheetDialog({
                 placeholder="Enter manager name"
               />
             </div>
+
           </div>
 
-          <div className="grid grid-cols-2 gap-6">
-            <div className="space-y-3">
-              <Label className="text-base font-semibold">Targets:</Label>
-              {goalItems.map((item, index) => (
-                <div key={index} className="space-y-1">
-                  <Label className="text-sm">{index + 1}:{index < 5 ? '*' : ''}</Label>
-                  <Select 
-                    value={item.targetTypeId} 
-                    onValueChange={(v) => updateGoalItem(index, 'targetTypeId', v)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="-- Select Target --" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {targetTypes.map(type => (
-                        <SelectItem key={type.id} value={type.id}>
-                          {type.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              ))}
-            </div>
+          {goalItems.map((item, index) => (
 
-            <div className="space-y-3">
-              <Label className="text-base font-semibold">Goals:</Label>
-              {goalItems.map((item, index) => (
-                <div key={index} className="space-y-1">
-                  <Label className="text-sm">{index + 1}:{index < 5 ? '*' : ''}</Label>
+            <div key={index} className="grid grid-cols-2 gap-4 border p-3 rounded-lg items-end">
+
+              <div className="space-y-2">
+                <Label>Target {index + 1}</Label>
+                <Select
+                  value={item.targetTypeId}
+                  onValueChange={(v) => updateGoalItem(index, 'targetTypeId', v)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select Target" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {targetTypes.map(type => (
+                      <SelectItem key={type.id} value={type.id}>
+                        {type.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Goal {index + 1}</Label>
+                <div className="flex gap-2">
                   <Input
                     value={item.goal}
                     onChange={(e) => updateGoalItem(index, 'goal', e.target.value)}
-                    placeholder=""
                   />
+
+                  {goalItems.length > 1 && (
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      onClick={() => removeGoalItem(index)}
+                    >
+                      Remove
+                    </Button>
+                  )}
+
                 </div>
-              ))}
+              </div>
+
             </div>
-          </div>
+
+          ))}
+
+          <Button type="button" variant="outline" onClick={addGoalItem}>
+            + Add Target
+          </Button>
 
           <div className="flex justify-end gap-2">
+
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
+
             <Button onClick={handleSubmit} disabled={loading}>
               {loading ? 'Creating...' : 'Create Goalsheet'}
             </Button>
+
           </div>
+
         </div>
+
       </DialogContent>
     </Dialog>
   );
