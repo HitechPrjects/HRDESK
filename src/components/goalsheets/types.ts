@@ -38,11 +38,7 @@ export interface Goalsheet {
     last_name: string;
     employee_id: string | null;
   };
-  reporting_manager_id: string | null;
-  reporting_manager?: {
-    first_name: string;
-    last_name: string;
-  } | null;
+  reporting_manager: string | null;
   title: string;
   period_start: string;
   period_end: string;

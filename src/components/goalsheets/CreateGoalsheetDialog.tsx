@@ -135,20 +135,20 @@ export function CreateGoalsheetDialog({
       const title = `Goalsheet|${monthName} ${year}`;
 
       const { data: goalsheet, error: goalsheetError } = await supabase
-        .from('goalsheets')
-        .insert({
-          profile_id: selectedEmployee,
-          title,
-          period_start: format(periodStart, 'yyyy-MM-dd'),
-          period_end: format(periodEnd, 'yyyy-MM-dd'),
-          month,
-          year,
-          status: 'not_started',
-          created_by: authUser?.profileId,
-          reporting_manager_id: authUser?.profileId,
-        })
-        .select()
-        .single();
+      .from('goalsheets')
+      .insert({
+        profile_id: selectedEmployee,
+        title,
+        period_start: format(periodStart, 'yyyy-MM-dd'),
+        period_end: format(periodEnd, 'yyyy-MM-dd'),
+        month,
+        year,
+        status: 'not_started',
+        created_by: authUser?.profileId,
+        reporting_manager: reportingManager
+      })
+      .select()
+      .single();
 
       if (goalsheetError || !goalsheet) {
         throw new Error(goalsheetError?.message || "Goalsheet creation failed");

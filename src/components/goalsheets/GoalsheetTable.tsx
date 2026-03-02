@@ -34,18 +34,22 @@ export function GoalsheetTable({
   const isHR = authUser?.role === 'hr';
 
   const filteredGoalsheets = goalsheets.filter(g =>
-    `${g.profile?.first_name} ${g.profile?.last_name} ${g.profile?.employee_id} ${g.title}`
+    `${g.profile?.first_name ?? ''} ${g.profile?.last_name ?? ''} ${g.profile?.employee_id ?? ''} ${g.title ?? ''}`
       .toLowerCase()
       .includes(search.toLowerCase())
   );
 
   const getWeekButtonVariant = (goalsheet: Goalsheet, week: number) => {
-    const items = goalsheet.goal_items || [];
-    const weekKey = `week${week}_submitted` as keyof typeof items[0];
-    const allSubmitted = items.length > 0 && items.every(item => item[weekKey]);
+    const items = goalsheet.goal_items ?? [];
+
+    if (items.length === 0) return 'outline';
+
+    const weekKey = `week${week}_submitted`;
+
+    const allSubmitted = items.every((item: any) => item?.[weekKey]);
+
     return allSubmitted ? 'default' : 'outline';
   };
-
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-4">
@@ -93,9 +97,7 @@ export function GoalsheetTable({
                   {goalsheet.profile?.first_name} {goalsheet.profile?.last_name}
                 </TableCell>
                 <TableCell>
-                  {goalsheet.reporting_manager 
-                    ? `${goalsheet.reporting_manager.first_name} ${goalsheet.reporting_manager.last_name}`
-                    : '-'}
+                  {goalsheet.reporting_manager || 'Not Assigned'}
                 </TableCell>
                 <TableCell>
                   {format(new Date(goalsheet.created_at), 'yyyy-MM-dd HH:mm:ss')}

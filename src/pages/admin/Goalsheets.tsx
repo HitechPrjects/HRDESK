@@ -77,7 +77,6 @@ export default function AdminGoalsheets({ viewMode: initialViewMode }: AdminGoal
         .select(`
           *,
           profiles:profile_id(id, first_name, last_name, employee_id),
-          reporting_manager:reporting_manager_id(first_name, last_name),
           goal_items(*)
         `)
         .order('created_at', { ascending: false });
@@ -108,7 +107,6 @@ export default function AdminGoalsheets({ viewMode: initialViewMode }: AdminGoal
       const formattedGoalsheets = data?.map((g: any) => ({
         ...g,
         profile: g.profiles,
-        reporting_manager: g.reporting_manager,
         goal_items: g.goal_items,
       })) || [];
 
