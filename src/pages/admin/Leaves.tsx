@@ -13,7 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Plus, Search, Check, X } from 'lucide-react';
+import { Plus, Search, Check, X, Calendar } from 'lucide-react';
 import { format, differenceInDays } from 'date-fns';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -54,6 +54,22 @@ interface AdminLeavesProps {
   viewMode?: 'all' | 'my' | 'employees';
 }
 
+const leaveCalendar2026 = [
+  { date: '1-Jan', day: 'Thursday', holiday: 'New year' },
+  { date: '15-Jan', day: 'Wednesday', holiday: 'Pongal' },
+  { date: '26-Jan', day: 'Monday', holiday: 'Republic day' },
+  { date: '21-Mar', day: 'Saturday', holiday: 'Ramzan (Tentative Date)' },
+  { date: '14-Apr', day: 'Tuesday', holiday: 'Tamil new year' },
+  { date: '1-May', day: 'Friday', holiday: 'May day' },
+  { date: '15-Aug', day: 'Saturday', holiday: 'Independence Day' },
+  { date: '14-Sep', day: 'Monday', holiday: 'Ganesh Chaturthi' },
+  { date: '2-Oct', day: 'Thursday', holiday: 'Gandhi Jayanti' },
+  { date: '20-Oct', day: 'Tuesday', holiday: 'Ayudha Pooja' },
+  { date: '1-Nov', day: 'Saturday', holiday: 'Pondicherry Liberation Day' },
+  { date: '8-Nov', day: 'Sunday', holiday: 'Diwali' },
+  { date: '25-Dec', day: 'Friday', holiday: 'Christmas Day' },
+];
+
 export default function AdminLeaves({ viewMode: initialViewMode }: AdminLeavesProps) {
   const { authUser } = useAuth();
   const [leaves, setLeaves] = useState<Leave[]>([]);
@@ -63,6 +79,7 @@ export default function AdminLeaves({ viewMode: initialViewMode }: AdminLeavesPr
   const [dialogOpen, setDialogOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'all' | 'my' | 'employees'>(initialViewMode || 'all');
   const { toast } = useToast();
+  const [calendarOpen, setCalendarOpen] = useState(false);
 
   const isAdmin = authUser?.role === 'admin';
   const isHR = authUser?.role === 'hr';
@@ -258,7 +275,7 @@ export default function AdminLeaves({ viewMode: initialViewMode }: AdminLeavesPr
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold">Leave Management</h1>
           <p className="text-muted-foreground">
@@ -266,101 +283,140 @@ export default function AdminLeaves({ viewMode: initialViewMode }: AdminLeavesPr
           </p>
         </div>
 
-        {/* Apply Leave button for HR and Employees */}
-        {(isHR || isEmployee) && (
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="mr-2 h-4 w-4" />
-                Apply Leave
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={() => setCalendarOpen(true)}
+          >
+            <Calendar className="mr-2 h-4 w-4" />
+            Leave Calendar
+          </Button>
+
+          <Dialog open={calendarOpen} onOpenChange={setCalendarOpen}>
+            <DialogContent className="max-w-md max-h-[80vh] flex flex-col">
               <DialogHeader>
-                <DialogTitle>Apply for Leave</DialogTitle>
+                <DialogTitle>HTGE Leave Calendar 2026</DialogTitle>
               </DialogHeader>
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                  <FormField
-                    control={form.control}
-                    name="leave_type_id"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Leave Type</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select leave type" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {leaveTypes.map(type => (
-                              <SelectItem key={type.id} value={type.id}>
-                                {type.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="start_date"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Start Date</FormLabel>
-                          <FormControl>
-                            <Input type="date" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="end_date"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>End Date</FormLabel>
-                          <FormControl>
-                            <Input type="date" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
-                  <FormField
-                    control={form.control}
-                    name="reason"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Reason (Optional)</FormLabel>
-                        <FormControl>
-                          <Textarea {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <div className="flex justify-end gap-2">
-                    <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
-                      Cancel
-                    </Button>
-                    <Button type="submit">Apply</Button>
-                  </div>
-                </form>
-              </Form>
+              <div className="overflow-y-auto flex-1">
+                <Table>
+                  <TableHeader className="sticky top-0 bg-background">
+                    <TableRow>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Day</TableHead>
+                      <TableHead>Holiday</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {leaveCalendar2026.map((row) => (
+                      <TableRow key={row.date}>
+                        <TableCell className="font-medium">{row.date}</TableCell>
+                        <TableCell>{row.day}</TableCell>
+                        <TableCell>{row.holiday}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             </DialogContent>
           </Dialog>
-        )}
+
+          {/* Apply Leave button for HR and Employees */}
+          {(isHR || isEmployee) && (
+            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+              <DialogTrigger asChild>
+                <Button>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Apply Leave
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Apply for Leave</DialogTitle>
+                </DialogHeader>
+                <Form {...form}>
+                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                    <FormField
+                      control={form.control}
+                      name="leave_type_id"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Leave Type</FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select leave type" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {leaveTypes.map(type => (
+                                <SelectItem key={type.id} value={type.id}>
+                                  {type.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="start_date"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Start Date</FormLabel>
+                            <FormControl>
+                              <Input type="date" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="end_date"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>End Date</FormLabel>
+                            <FormControl>
+                              <Input type="date" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <FormField
+                      control={form.control}
+                      name="reason"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Reason (Optional)</FormLabel>
+                          <FormControl>
+                            <Textarea {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <div className="flex justify-end gap-2">
+                      <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
+                        Cancel
+                      </Button>
+                      <Button type="submit">Apply</Button>
+                    </div>
+                  </form>
+                </Form>
+              </DialogContent>
+            </Dialog>
+          )}
+        </div>
       </div>
 
       <Card>

@@ -22,6 +22,7 @@ import DailyTraining from "./components/training/DailyTraining";
 import OngoingTraining from "./components/training/OngoingTraining";
 import TrainingDetailsList from "./components/training/TrainingDetailsList";
 import TrainingUserView from "./components/training/TrainingUserView";
+import HRPolicy from "./pages/admin/Hrpolicy";
 
 // Configure query client with security settings
 const queryClient = new QueryClient({
@@ -67,6 +68,7 @@ const App = () => (
               <Route path="goalsheets" element={<AdminGoalsheets />} />
               <Route path="payroll" element={<AdminPayroll />} />
               <Route path="announcements" element={<AdminAnnouncements />} />
+              <Route path="hr-policy" element={<HRPolicy />} />
               <Route path="settings" element={<AdminSettings />} />
             </Route>
 
@@ -96,6 +98,7 @@ const App = () => (
               <Route path="goalsheets" element={<AdminGoalsheets />} />
               <Route path="payroll" element={<AdminPayroll />} />
               <Route path="announcements" element={<AdminAnnouncements />} />
+              <Route path="hr-policy" element={<HRPolicy />} />
               <Route path="settings" element={<AdminSettings />} />
             </Route>
 
@@ -117,6 +120,7 @@ const App = () => (
               </Route>
 
               <Route path="goals" element={<AdminGoalsheets />} />
+              <Route path="hr-policy" element={<HRPolicy />} />
               <Route path="settings" element={<AdminSettings />} />
             </Route>
 
