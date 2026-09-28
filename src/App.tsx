@@ -23,6 +23,7 @@ import OngoingTraining from "./components/training/OngoingTraining";
 import TrainingDetailsList from "./components/training/TrainingDetailsList";
 import TrainingUserView from "./components/training/TrainingUserView";
 import HRPolicy from "./pages/admin/Hrpolicy";
+import LeavePolicy from "./pages/admin/LeavePolicy";
 
 // Configure query client with security settings
 const queryClient = new QueryClient({
@@ -69,6 +70,7 @@ const App = () => (
               <Route path="payroll" element={<AdminPayroll />} />
               <Route path="announcements" element={<AdminAnnouncements />} />
               <Route path="hr-policy" element={<HRPolicy />} />
+              <Route path="leave-policy" element={<LeavePolicy />} />
               <Route path="settings" element={<AdminSettings />} />
             </Route>
 
@@ -99,6 +101,7 @@ const App = () => (
               <Route path="payroll" element={<AdminPayroll />} />
               <Route path="announcements" element={<AdminAnnouncements />} />
               <Route path="hr-policy" element={<HRPolicy />} />
+              <Route path="leave-policy" element={<LeavePolicy />} />
               <Route path="settings" element={<AdminSettings />} />
             </Route>
 
@@ -121,6 +124,7 @@ const App = () => (
 
               <Route path="goals" element={<AdminGoalsheets />} />
               <Route path="hr-policy" element={<HRPolicy />} />
+              <Route path="leave-policy" element={<LeavePolicy />} />
               <Route path="settings" element={<AdminSettings />} />
             </Route>
 

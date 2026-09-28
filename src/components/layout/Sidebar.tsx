@@ -231,7 +231,14 @@ export const adminSidebarItems: SidebarItem[] = [
   { title: 'Goalsheets', href: '/admin/goalsheets', icon: <Target className="h-4 w-4" /> },
   { title: 'Payroll', href: '/admin/payroll', icon: <DollarSign className="h-4 w-4" /> },
   { title: 'Announcements', href: '/admin/announcements', icon: <Megaphone className="h-4 w-4" /> },
-  { title: 'HR Policy', href: '/admin/hr-policy', icon: <FileText className="h-4 w-4" /> },
+  {
+    title: 'Policy',
+    icon: <FileText className="h-4 w-4" />,
+    children: [
+      { title: 'HR Policy', href: '/admin/hr-policy', icon: null },
+      { title: 'Leave Policy', href: '/admin/leave-policy', icon: null },
+    ],
+  },
   { title: 'Settings', href: '/admin/settings', icon: <Settings className="h-4 w-4" /> },
 ];
 
@@ -259,7 +266,14 @@ export const hrSidebarItems: SidebarItem[] = [
   { title: 'Goalsheets', href: '/hr/goalsheets', icon: <Target className="h-4 w-4" /> },
   { title: 'Payroll', href: '/hr/payroll', icon: <DollarSign className="h-4 w-4" /> },
   { title: 'Announcements', href: '/hr/announcements', icon: <Megaphone className="h-4 w-4" /> },
-  { title: 'HR Policy', href: '/hr/hr-policy', icon: <FileText className="h-4 w-4" /> },
+  {
+    title: 'Policy',
+    icon: <FileText className="h-4 w-4" />,
+    children: [
+      { title: 'HR Policy', href: '/hr/hr-policy', icon: null },
+      { title: 'Leave Policy', href: '/hr/leave-policy', icon: null },
+    ],
+  },
   { title: 'Settings', href: '/hr/settings', icon: <Settings className="h-4 w-4" /> },
 ];
 
@@ -281,6 +295,13 @@ export const employeeSidebarItems: SidebarItem[] = [
   },
 
   { title: 'Goals', href: '/employee/goals', icon: <Target className="h-4 w-4" /> },
-  { title: 'HR Policy', href: '/employee/hr-policy', icon: <FileText className="h-4 w-4" /> },
+  {
+    title: 'Policy',
+    icon: <FileText className="h-4 w-4" />,
+    children: [
+      { title: 'HR Policy', href: '/employee/hr-policy', icon: null },
+      { title: 'Leave Policy', href: '/employee/leave-policy', icon: null },
+    ],
+  },
   { title: 'Settings', href: '/employee/settings', icon: <Settings className="h-4 w-4" /> },
 ];

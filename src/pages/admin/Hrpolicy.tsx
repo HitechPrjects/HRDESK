@@ -6,7 +6,7 @@ import { Download, FileText } from 'lucide-react';
    Place the PDF file at: public/HR_Rules_and_Regulations_Document_Final.pdf
    so it is served from the root and downloadable at the href below.
    ================================================================ */
-const PDF_PATH = "/HRpolicy/HR_Rules_and_Regulations_Document_Final.pdf";
+const PDF_PATH = "/policy/HR_Rules_and_Regulations_Document_Final.pdf";
 
 interface PolicySection {
   number: number;
