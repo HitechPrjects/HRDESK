@@ -3,7 +3,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Download, FileText } from 'lucide-react';
 
-const PDF_PATH = '/policy/Leave-Policy.pdf';
+const PDF_PATH = '/policy/Leave_Allowance_Policy.pdf';
 
 const leaveTableData = [
   { quarter: 'Q1', period: 'January – March', planned: '2 Days', sick: '3 Days' },
