@@ -64,7 +64,7 @@ const leaveCalendar2026 = [
   { date: '15-Aug', day: 'Saturday', holiday: 'Independence Day' },
   { date: '14-Sep', day: 'Monday', holiday: 'Ganesh Chaturthi' },
   { date: '2-Oct', day: 'Thursday', holiday: 'Gandhi Jayanti' },
-  { date: '19-Oct', day: 'Tuesday', holiday: 'Ayudha Pooja' },
+  { date: '19-Oct', day: 'Monday', holiday: 'Ayudha Pooja' },
   { date: '1-Nov', day: 'Saturday', holiday: 'Pondicherry Liberation Day' },
   { date: '8-Nov', day: 'Sunday', holiday: 'Diwali' },
   { date: '25-Dec', day: 'Friday', holiday: 'Christmas Day' },
